@@ -1,0 +1,137 @@
+{
+    "binDependencies": [
+        "BCrypt.Net-Next.dll"
+    ],
+    "dataTypes": [
+        {
+            "file": "Group *.xml",
+            "group": "A",
+            "dependsOn": []
+        },
+        {
+            "file": "Module *.xml",
+            "group": "A",
+            "dependsOn": []
+        },
+        {
+            "file": "User *.xml",
+            "group": "A",
+            "dependsOn": []
+        },
+        {
+            "file": "Permission *.xml",
+            "group": "B",
+            "dependsOn": [
+                "Module"
+            ]
+        },
+        {
+            "file": "Token *.xml",
+            "group": "B",
+            "dependsOn": [
+                "User"
+            ]
+        },
+        {
+            "file": "KeyTreeItem *.xml",
+            "group": "B",
+            "dependsOn": []
+        },
+        {
+            "file": "PermissionInGroup *.xml",
+            "group": "C",
+            "dependsOn": [
+                "Permission",
+                "Group"
+            ]
+        },
+        {
+            "file": "PermissionInUser *.xml",
+            "group": "C",
+            "dependsOn": [
+                "User",
+                "Permission"
+            ]
+        },
+        {
+            "file": "UserInGroup *.xml",
+            "group": "C",
+            "dependsOn": [
+                "User",
+                "Group"
+            ]
+        },
+        {
+            "file": "UserModuleState *.xml",
+            "group": "C",
+            "dependsOn": [
+                "User",
+                "Module"
+            ]
+        }
+    ],
+    "appCode": {
+        "items": [
+            {
+                "source": "AuthKit",
+                "target": "~/App_Code/AuthKit"
+            },
+            {
+                "source": "KeyTreeStore/KeyTreeStoreManager.cs",
+                "target": "~/App_Code/KeyTreeStore/KeyTreeStoreManager.cs"
+            },
+            {
+                "source": "HeaderCleanupModule.cs",
+                "target": "~/App_Code/HeaderCleanupModule.cs"
+            }
+        ]
+    },
+    "templates": [
+        {
+            "file": "AuthKit.PanelLayout.cshtml",
+            "order": 0
+        },
+        {
+            "file": "AuthKit.AuthLayout.cshtml",
+            "order": 1
+        },
+        {
+            "file": "AuthKit.SetupPage.cshtml",
+            "order": 1
+        },
+        {
+            "file": "AuthKit.UserManagementPage.cshtml",
+            "order": 2
+        },
+        {
+            "file": "AuthKit.GroupManagementPage.cshtml",
+            "order": 2
+        },
+        {
+            "file": "AuthKit.GroupPermissionPage.cshtml",
+            "order": 2
+        },
+        {
+            "file": "AuthKit.UserPermissionPage.cshtml",
+            "order": 2
+        }
+    ],
+    "razor": [
+        {
+            "source": "Razor/AuthKit",
+            "target": "~/App_Data/Razor/AuthKit"
+        }
+    ],
+    "webConfig": {
+        "removeServerHeader": true,
+        "removeCustomHeaders": [
+            "X-SourceFiles"
+        ],
+        "addModules": [
+            {
+                "name": "HeaderCleanupModule",
+                "type": "HeaderCleanupModule"
+            }
+        ]
+    }
+}

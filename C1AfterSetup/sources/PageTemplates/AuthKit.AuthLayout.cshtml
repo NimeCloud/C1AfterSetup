@@ -1,0 +1,82 @@
+﻿@inherits RazorPageTemplate
+@using System
+@using System.Web
+@using Composite.Data
+
+@functions {
+    public override void Configure()
+    {
+        TemplateId = new Guid("24e07eb6-17c9-424e-9c16-219f57a85900");
+        TemplateTitle = "AuthKit.AuthLayout";
+        Layout = null; // Auth sayfalari (Login/Register/Forgot/Reset/Logout) icin bagimsiz layout
+    }
+
+    // Sayfa icerigi (giris formu vb.) bu alana yerlestirilir
+    [Placeholder(Id = "content", Title = "Content", IsDefault = true)]
+    public XhtmlDocument Content { get; set; }
+}
+
+@{
+    var tablerIconsUrl = "https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css";
+    // Suresi dolmus kimlik dogrulama token'larini temizle
+    try { AuthKit.Authentication.AuthenticationManager.CleanupExpiredAuthTokens(); } catch { }
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AuthKit</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+    <link rel="stylesheet" href="@tablerIconsUrl" />
+
+    <style>
+            body {
+                background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+                min-height: 100vh;
+                font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            }
+
+            .authkit-auth-card {
+                background-color: #fff;
+                border-radius: .75rem;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+                padding: 2.5rem;
+                max-width: 440px;
+                width: 100%;
+            }
+
+            .authkit-auth-card .brand {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: #1f2937;
+            }
+
+            .authkit-auth-card .brand i {
+                color: #3b82f6;
+            }
+    </style>
+</head>
+
+<body class="d-flex align-items-center justify-content-center">
+    <div class="authkit-auth-card">
+        <div class="text-center mb-4">
+            <span class="brand"><i class="ti ti-shield-lock me-1"></i>AuthKit</span>
+        </div>
+        @if (Content != null)
+        {
+            @Markup(Content)
+        }
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+</body>
+
+</html>

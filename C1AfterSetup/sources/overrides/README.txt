@@ -1,0 +1,1 @@
+﻿Bu klasore koydugunuz her dosya (DLL vb.) kurulum sirasinda hedef C1 CMS sitenin ~/bin klasorune kopyalanir ve varsayilan bagimliliklarin UZERINE yazilir. Ornegin: Newtonsoft.Json.dll gibi farkli bir surumu buraya koyabilirsiniz.

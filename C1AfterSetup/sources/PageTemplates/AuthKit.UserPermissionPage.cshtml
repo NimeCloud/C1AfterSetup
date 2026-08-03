@@ -1,0 +1,199 @@
+﻿@inherits RazorPageTemplate
+
+@functions {
+    public override void Configure()
+    {
+        TemplateId = new Guid("70d2e0d8-d2d1-4209-a5ae-a0bc7d283a9d");
+        TemplateTitle = "AuthKit.UserPermissionPage";
+        Layout = "AuthKit.PanelLayout.cshtml";
+    }
+}
+
+@{
+    AuthKit.Authorization.AuthorizationManager.CheckPagePermission(AuthKit.Authorization.PermissionKeys.Auth.Users.View);
+}
+
+<style>
+    .permission-check[data-type="deny"]:checked {
+        accent-color: #dc3545;
+    }
+
+    .permission-check[data-type="allow"]:checked {
+        accent-color: #198754;
+    }
+
+    .section-check[data-type="deny"]:checked {
+        accent-color: #dc3545;
+    }
+
+    .is-inherited-allow {
+        accent-color: #6c757d !important;
+    }
+
+    .is-inherited-deny {
+        accent-color: #dc3545 !important;
+        opacity: 0.6;
+    }
+
+    .row-deny {
+        background-color: #fff5f5 !important;
+    }
+
+    .row-allow {
+        background-color: #f0fff4 !important;
+    }
+
+    .row-inherited-allow {
+        background-color: #f8f9fa !important;
+    }
+
+    .row-inherited-deny {
+        background-color: #fff0f0 !important;
+    }
+</style>
+
+<div class="card">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-5">
+                <label for="userSelector" class="form-label">Kullanıcı Seçin</label>
+                <select id="userSelector" class="form-select">
+                    <option selected disabled value="">Kullanıcı seçiniz...</option>
+                </select>
+            </div>
+            <div class="col-md-7">
+                <button id="savePermissionsBtn" class="btn btn-primary" disabled>Yetkileri Kaydet</button>
+            </div>
+        </div>
+
+        <div id="permissionsContainer" class="mt-4">
+            <div class="d-flex align-items-center justify-content-center" style="min-height: 200px;">
+                <p class="text-muted">Yetkileri görmek için bir kullanıcı seçin.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    //<![CDATA[
+    $(function () {
+        const userSelector = $('#userSelector');
+        const permissionsContainer = $('#permissionsContainer');
+        const savePermissionsBtn = $('#savePermissionsBtn');
+
+        function loadUsers() {
+            $.ajax({
+                url: '/Api/GetAllUsersForDropdown', type: 'POST',
+                success: function (response) {
+                    userSelector.find('option:not(:first)').remove();
+                    if (response.data) {
+                        response.data.forEach(function (user) {
+                            userSelector.append(new Option(user.UserName, user.Id));
+                        });
+                    }
+                }
+            });
+        }
+        loadUsers();
+
+        userSelector.on('change', function () {
+            const selectedUserId = $(this).val();
+            if (!selectedUserId) return;
+
+            savePermissionsBtn.prop('disabled', false);
+            permissionsContainer.html('<div class="text-center p-4">Yetkiler yükleniyor...</div>');
+
+            $.ajax({
+                url: '/Api/GetEffectivePermissionsForUser', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                data: JSON.stringify({ userId: selectedUserId }),
+                success: function (response) {
+                    if (response.data) renderPermissions(response.data);
+                },
+                error: function (res) {
+                    var err = res.responseJSON || { error: 'Bilinmeyen hata.' };
+                    permissionsContainer.html('<div class="alert alert-danger">' + err.error + '</div>');
+                }
+            });
+        });
+
+        function renderPermissions(modules) {
+            let html = '<div class="table-responsive"><table class="table table-bordered table-hover"><thead><tr>' +
+                '<th>Yetki</th><th class="text-center" style="width:80px">Miras</th><th class="text-center" style="width:80px">İzin Ver</th><th class="text-center" style="width:80px">Yasakla</th></tr></thead><tbody>';
+
+            modules.forEach(function (module) {
+                html += '<tr class="table-secondary"><td colspan="4"><strong>' + module.ModuleName + '</strong></td></tr>';
+                module.Permissions.forEach(function (p) {
+                    var inheritedChecked = p.InheritedState === 'InheritedAllow' || p.InheritedState === 'InheritedDeny';
+                    var directAllowChecked = p.State === 'DirectAllow';
+                    var directDenyChecked = p.State === 'DirectDeny';
+                    var sourceInfo = p.Source ? ' <span class="badge bg-info">' + p.Source + '</span>' : '';
+
+                    html += '<tr data-permissionid="' + p.Id + '" data-inherited-state="' + p.State + '">' +
+                        '<td>' + p.Description + ' <small class="text-muted">(' + (p.Name || '') + ')</small>' + sourceInfo + '</td>' +
+                        '<td class="text-center"><input class="form-check-input inherited-check" type="checkbox" ' + (inheritedChecked ? 'checked' : '') + ' disabled></td>' +
+                        '<td class="text-center"><input class="form-check-input permission-check" type="checkbox" data-type="allow" ' + (directAllowChecked ? 'checked' : '') + '></td>' +
+                        '<td class="text-center"><input class="form-check-input permission-check" type="checkbox" data-type="deny" ' + (directDenyChecked ? 'checked' : '') + '></td></tr>';
+                });
+            });
+
+            html += '</tbody></table></div>';
+            permissionsContainer.html(html);
+            $('tr[data-permissionid]').each(function () { updateRowAppearance($(this)); });
+        }
+
+        function updateRowAppearance(row) {
+            row.removeClass('row-allow row-deny row-inherited-allow row-inherited-deny');
+            var allowCheck = row.find('.permission-check[data-type="allow"]');
+            var denyCheck = row.find('.permission-check[data-type="deny"]');
+            var inheritedState = row.data('inherited-state');
+
+            if (denyCheck.is(':checked')) row.addClass('row-deny');
+            else if (allowCheck.is(':checked')) row.addClass('row-allow');
+            else if (inheritedState === 'InheritedDeny') row.addClass('row-inherited-deny');
+            else if (inheritedState === 'InheritedAllow') row.addClass('row-inherited-allow');
+        }
+
+        permissionsContainer.on('change', '.permission-check', function () {
+            var checkbox = $(this);
+            var row = checkbox.closest('tr');
+            var type = checkbox.data('type');
+            if (checkbox.is(':checked')) {
+                row.find('.permission-check[data-type="' + (type === 'allow' ? 'deny' : 'allow') + '"]').prop('checked', false);
+            }
+            updateRowAppearance(row);
+        });
+
+        savePermissionsBtn.on('click', function () {
+            var btn = $(this);
+            var selectedUserId = userSelector.val();
+            var moduleStates = [];
+            var permissionsToUpdate = [];
+
+            $('tr[data-permissionid]').each(function () {
+                var row = $(this);
+                var permissionId = row.data('permissionid');
+                var allowCheck = row.find('.permission-check[data-type="allow"]');
+                var denyCheck = row.find('.permission-check[data-type="deny"]');
+                var state = "clear";
+                if (allowCheck.is(':checked')) state = "allow";
+                else if (denyCheck.is(':checked')) state = "deny";
+                permissionsToUpdate.push({ PermissionId: permissionId, State: state });
+            });
+
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Kaydediliyor...');
+            $.ajax({
+                url: '/Api/UpdateUserPermissions', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                data: JSON.stringify({ userId: selectedUserId, permissions: permissionsToUpdate, moduleStates: moduleStates })
+            }).done(function () {
+                Swal.fire('Başarılı!', 'Kullanıcı yetkileri güncellendi.', 'success');
+                userSelector.trigger('change');
+            }).fail(function (response) {
+                var err = response.responseJSON || { error: 'Beklenmeyen hata' };
+                Swal.fire('Hata!', err.error, 'error');
+            }).always(function () {
+                btn.prop('disabled', false).html('Yetkileri Kaydet');
+            });
+        });
+    });
+    //]]>
+</script>

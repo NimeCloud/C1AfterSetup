@@ -1,0 +1,246 @@
+﻿@inherits RazorFunction
+@*
+    AuthKit Sayfa Kurulum Asistani
+    ==============================
+    Bu Razor fonksiyonunu herhangi bir C1 sayfasina ekleyip calistirarak
+    AuthKit yonetim sayfalarini otomatik olarak C1 sayfa agaciniza ekleyebilirsiniz.
+
+    Calistirma: /page(your-page-id) adresine gidip bu fonksiyonun eklendigi sayfayi goruntuleyin.
+    Calistiktan sonra bu fonksiyonu sayfadan kaldirabilirsiniz.
+
+    Guvenlik: Sadece C1 Administrator grubundaki kullanicilar calistirabilir.
+*@
+
+@using Composite.Data
+@using Composite.Data.Types
+@using System
+@using System.Linq
+
+@{
+    // OTOMATIK BASLATMA: AuthKit henuz initialize edilmediyse simdi yap
+    if (!AuthKit.Startup.AuthStartupHandler.IsInitialized)
+    {
+        try
+        {
+            AuthKit.Startup.AuthStartupHandler.Initialize();
+        }
+        catch (Exception ex)
+        {
+            <div class="alert alert-danger">AuthKit baslatma hatasi: @ex.Message</div>
+            return;
+        }
+    }
+
+    // Guvenlik kontrolu
+    if (!AuthKit.C1.C1Security.IsCurrentUserInAdministratorsGroup())
+    {
+        <div class="alert alert-danger">Bu islem sadece C1 Administratorleri tarafindan yapilabilir.</div>
+        return;
+    }
+
+    var action = Request.QueryString["action"];
+    var result = "";
+
+    if (action == "create")
+    {
+        result = CreateAuthPages();
+    }
+}
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AuthKit Sayfa Kurulumu</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+
+<body class="p-4">
+    <div class="container">
+        <h2>AuthKit Sayfa Kurulumu</h2>
+
+        @if (!string.IsNullOrEmpty(result))
+        {
+            <div class="alert alert-info">
+                <pre>@result</pre>
+            </div>
+        }
+
+        <div class="card mb-3">
+            <div class="card-header">Kurulacak Sayfalar</div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Sayfa</th>
+                            <th>URL</th>
+                            <th>Sablon</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Kullanici Yonetimi</td>
+                            <td>/Users</td>
+                            <td>AuthKit.UserManagementPage</td>
+                        </tr>
+                        <tr>
+                            <td>Grup Yonetimi</td>
+                            <td>/Groups</td>
+                            <td>AuthKit.GroupManagementPage</td>
+                        </tr>
+                        <tr>
+                            <td>Grup Yetkileri</td>
+                            <td>/Group-Permissions</td>
+                            <td>AuthKit.GroupPermissionPage</td>
+                        </tr>
+                        <tr>
+                            <td>Kullanici Yetkileri</td>
+                            <td>/User-Permissions</td>
+                            <td>AuthKit.UserPermissionPage</td>
+                        </tr>
+                        <tr>
+                            <td>Giris Yap</td>
+                            <td>/Login</td>
+                            <td>AuthKit.AuthLayout (Razor: Login)</td>
+                        </tr>
+                        <tr>
+                            <td>Kayit Ol</td>
+                            <td>/Register</td>
+                            <td>AuthKit.AuthLayout (Razor: Register)</td>
+                        </tr>
+                        <tr>
+                            <td>Sifremi Unuttum</td>
+                            <td>/Forgot-Password</td>
+                            <td>AuthKit.AuthLayout (Razor: ForgotPassword)</td>
+                        </tr>
+                        <tr>
+                            <td>Sifre Sifirla</td>
+                            <td>/Reset-Password</td>
+                            <td>AuthKit.AuthLayout (Razor: ResetPassword)</td>
+                        </tr>
+                        <tr>
+                            <td>Cikis Yap</td>
+                            <td>/Logout</td>
+                            <td>AuthKit.AuthLayout (Razor: Logout)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <a href="?action=create" class="btn btn-primary btn-lg"
+           onclick="return confirm('Sayfalar olusturulacak. Devam etmek istiyor musunuz?');">
+            Sayfalari Olustur
+        </a>
+        <p class="text-muted mt-2">Var olan sayfalar atlanir, sadece eksik olanlar eklenir.</p>
+    </div>
+</body>
+
+</html>
+
+@functions {
+    // PageTypeId: C1 CMS'in varsayilan Page Type'i
+    private static readonly Guid DefaultPageTypeId = new Guid("f7869eb2-7369-4eb2-af47-e3be261e92c7");
+
+    // AuthLayout template GUID'i (AuthLayout.cshtml icindeki TemplateId)
+    private static readonly Guid AuthLayoutTemplateId = new Guid("24e07eb6-17c9-424e-9c16-219f57a85900");
+
+    private static readonly Guid RootPageId = new Guid("00000000-0000-0000-0000-000000000000");
+
+    public static string CreateAuthPages()
+    {
+        var log = new System.Text.StringBuilder();
+        using (var conn = new DataConnection())
+        {
+            // Sayfa tanimlari: (TemplateId, Title, UrlTitle, MenuTitle)
+            var pagesToCreate = new[] {
+                // Yonetim sayfalari
+                (TemplateId: new Guid("f9a2e1d7-8c3b-4b2a-9e1f-1a2b3c4d5e6f"), Title: "Users", UrlTitle: "Users", MenuTitle:
+"Kullanıcılar"),
+                (TemplateId: new Guid("50562763-9421-40b6-8897-5214ab170051"), Title: "Groups", UrlTitle: "Groups", MenuTitle:
+"Gruplar"),
+                (TemplateId: new Guid("ff5a0c90-7f64-4e56-b9b9-1c078276f4c2"), Title: "Group Permissions", UrlTitle:
+"Group-Permissions", MenuTitle: "Grup Yetkileri"),
+                (TemplateId: new Guid("70d2e0d8-d2d1-4209-a5ae-a0bc7d283a9d"), Title: "User Permissions", UrlTitle: "User-Permissions",
+MenuTitle: "Kullanıcı Yetkileri"),
+                // Auth sayfalari
+                (TemplateId: AuthLayoutTemplateId, Title: "Login", UrlTitle: "Login", MenuTitle: "Giriş"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Register", UrlTitle: "Register", MenuTitle: "Kayıt"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Forgot Password", UrlTitle: "Forgot-Password", MenuTitle: "Şifremi Unuttum"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Reset Password", UrlTitle: "Reset-Password", MenuTitle: "Şifre Sıfırla"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Logout", UrlTitle: "Logout", MenuTitle: "Çıkış"),
+            };
+
+            foreach (var page in pagesToCreate)
+            {
+                // Ayni URL'de sayfa var mi kontrol et
+                var existing = conn.Get<IPage>().FirstOrDefault(p => p.UrlTitle == page.UrlTitle);
+                if (existing != null)
+                {
+                    log.AppendLine($"ATLANDI: '{page.Title}' zaten mevcut (ID: {existing.Id})");
+                    continue;
+                }
+
+                try
+                {
+                    // Yeni sayfa olustur
+                    var newPage = conn.CreateNew<IPage>();
+                    newPage.Id = Guid.NewGuid();
+                    newPage.TemplateId = page.TemplateId;
+                    newPage.PageTypeId = DefaultPageTypeId;
+                    newPage.Title = page.Title;
+                    newPage.MenuTitle = page.MenuTitle;
+                    newPage.UrlTitle = page.UrlTitle;
+                    newPage.FriendlyUrl = "";
+                    newPage.Description = "";
+                    newPage.SourceCultureName = "tr-TR";
+                    newPage.PublicationStatus = "published";
+                    newPage.CreationDate = DateTime.Now;
+                    newPage.ChangeDate = DateTime.Now;
+                    newPage.ChangedBy = "admin";
+                    newPage.CreatedBy = "admin";
+                    newPage.VersionId = Guid.NewGuid();
+                    conn.Add(newPage);
+
+                    // Sayfa yapisina ekle (kok seviyesinde)
+                    var structure = conn.CreateNew<IPageStructure>();
+                    structure.Id = newPage.Id;
+                    structure.ParentId = RootPageId;
+                    structure.LocalOrdering = 99;
+                    conn.Add(structure);
+
+                    log.AppendLine($"OLUSTURULDU: '{page.Title}' → /{page.UrlTitle} (ID: {newPage.Id})");
+
+                    // Login sayfasinin GUID'ini AuthKit'e bildir
+                    if (page.UrlTitle == "Login")
+                    {
+                        AuthKit.Authentication.AuthenticationManager.LoginPageId = newPage.Id;
+                        log.AppendLine($"  → LoginPageId set edildi: {newPage.Id}");
+                    }
+
+                    // Reset Password sayfasinin GUID'ini AuthKit'e bildir
+                    if (page.UrlTitle == "Reset-Password")
+                    {
+                        AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId = newPage.Id;
+                        log.AppendLine($"  → ResetPasswordPageId set edildi: {newPage.Id}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.AppendLine($"HATA: '{page.Title}' olusturulamadi: {ex.Message}");
+                }
+            }
+
+            // Login sayfa GUID'lerini Settings'e kaydet (kalici olsun)
+            if (AuthKit.Authentication.AuthenticationManager.LoginPageId != Guid.Empty)
+                KeyTreeStore.KeyTreeStoreManager.Set("Auth.LoginPageId",
+AuthKit.Authentication.AuthenticationManager.LoginPageId.ToString());
+
+            if (AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId != Guid.Empty)
+                KeyTreeStore.KeyTreeStoreManager.Set("Auth.ResetPasswordPageId",
+AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
+        }
+
+        return log.ToString();
+    }
+}

@@ -1,0 +1,288 @@
+﻿@inherits RazorPageTemplate
+@using Composite.Data
+@using Composite.Data.Types
+@using System
+@using System.Linq
+
+@functions {
+    public override void Configure()
+    {
+        TemplateId = new Guid("a1b0a1b0-0000-0000-0000-a1b0a1b0a1b0");
+        TemplateTitle = "AuthKit.SetupPage";
+        Layout = null;
+    }
+
+    [Placeholder(Id = "content", Title = "Content", IsDefault = true)]
+    public XhtmlDocument Content { get; set; }
+
+    private static readonly Guid DefaultPageTypeId = new Guid("f7869eb2-7369-4eb2-af47-e3be261e92c7");
+    private static readonly Guid AuthLayoutTemplateId = new Guid("24e07eb6-17c9-424e-9c16-219f57a85900");
+    private static readonly Guid RootPageId = new Guid("00000000-0000-0000-0000-000000000000");
+
+    public string CreateAuthPages()
+    {
+        var log = new System.Text.StringBuilder();
+        using (var conn = new DataConnection())
+        {
+            var pagesToCreate = new[] {
+                (TemplateId: new Guid("f9a2e1d7-8c3b-4b2a-9e1f-1a2b3c4d5e6f"), Title: "Users", UrlTitle: "Users", MenuTitle:
+"Kullanicilar"),
+                (TemplateId: new Guid("50562763-9421-40b6-8897-5214ab170051"), Title: "Groups", UrlTitle: "Groups", MenuTitle:
+"Gruplar"),
+                (TemplateId: new Guid("ff5a0c90-7f64-4e56-b9b9-1c078276f4c2"), Title: "Group Permissions", UrlTitle:
+"Group-Permissions", MenuTitle: "Grup Yetkileri"),
+                (TemplateId: new Guid("70d2e0d8-d2d1-4209-a5ae-a0bc7d283a9d"), Title: "User Permissions", UrlTitle: "User-Permissions",
+MenuTitle: "Kullanici Yetkileri"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Login", UrlTitle: "Login", MenuTitle: "Giris"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Register", UrlTitle: "Register", MenuTitle: "Kayit"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Forgot Password", UrlTitle: "Forgot-Password", MenuTitle: "Sifremi Unuttum"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Reset Password", UrlTitle: "Reset-Password", MenuTitle: "Sifre Sifirla"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Logout", UrlTitle: "Logout", MenuTitle: "Cikis"),
+            };
+
+            foreach (var page in pagesToCreate)
+            {
+                var existing = conn.Get<IPage>().FirstOrDefault(p => p.UrlTitle == page.UrlTitle);
+                if (existing != null)
+                {
+                    log.AppendLine(string.Format("ATLANDI: '{0}' zaten mevcut (ID: {1})", page.Title, existing.Id));
+                    continue;
+                }
+
+                try
+                {
+                    var newPage = conn.CreateNew<IPage>();
+                    newPage.Id = Guid.NewGuid();
+                    newPage.TemplateId = page.TemplateId;
+                    newPage.PageTypeId = DefaultPageTypeId;
+                    newPage.Title = page.Title;
+                    newPage.MenuTitle = page.MenuTitle;
+                    newPage.UrlTitle = page.UrlTitle;
+                    newPage.FriendlyUrl = "";
+                    newPage.Description = "";
+                    newPage.SourceCultureName = "tr-TR";
+                    newPage.PublicationStatus = "published";
+                    newPage.CreationDate = DateTime.Now;
+                    newPage.ChangeDate = DateTime.Now;
+                    newPage.ChangedBy = "admin";
+                    newPage.CreatedBy = "admin";
+                    newPage.VersionId = Guid.NewGuid();
+                    conn.Add(newPage);
+
+                    var structure = conn.CreateNew<IPageStructure>();
+                    structure.Id = newPage.Id;
+                    structure.ParentId = RootPageId;
+                    structure.LocalOrdering = 99;
+                    conn.Add(structure);
+
+                    log.AppendLine(string.Format("OLUSTURULDU: '{0}' -> /{1} (ID: {2})", page.Title, page.UrlTitle, newPage.Id));
+
+                    if (page.UrlTitle == "Login")
+                    {
+                        try { AuthKit.Authentication.AuthenticationManager.LoginPageId = newPage.Id; } catch { }
+                        log.AppendLine(string.Format("  -> LoginPageId: {0}", newPage.Id));
+                    }
+                    if (page.UrlTitle == "Reset-Password")
+                    {
+                        try { AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId = newPage.Id; } catch { }
+                        log.AppendLine(string.Format("  -> ResetPasswordPageId: {0}", newPage.Id));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.AppendLine(string.Format("HATA: '{0}' olusturulamadi: {1}", page.Title, ex.Message));
+                }
+            }
+
+            try
+            {
+                if (AuthKit.Authentication.AuthenticationManager.LoginPageId != Guid.Empty)
+                    KeyTreeStore.KeyTreeStoreManager.Set("Auth.LoginPageId",
+AuthKit.Authentication.AuthenticationManager.LoginPageId.ToString());
+                if (AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId != Guid.Empty)
+                    KeyTreeStore.KeyTreeStoreManager.Set("Auth.ResetPasswordPageId",
+AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
+            }
+            catch { }
+        }
+        return log.ToString();
+    }
+}
+
+@{
+    var action = Request["action"];
+    var result = "";
+    var typesReady = false;
+    var initDone = false;
+    var saveOAuthMessage = "";
+
+    // AuthKit init kontrolü
+    try
+    {
+        initDone = AuthKit.Startup.AuthStartupHandler.IsInitialized;
+        if (!initDone)
+        {
+            AuthKit.Startup.AuthStartupHandler.Initialize();
+            initDone = true;
+        }
+        typesReady = true;
+    }
+    catch (Exception ex)
+    {
+        typesReady = false;
+    }
+
+    if (action == "create" && typesReady)
+    {
+        result = CreateAuthPages();
+    }
+
+    if (action == "saveoauth")
+    {
+        try
+        {
+            var googleClientId = (Request["googleClientId"] ?? "").Trim();
+            var facebookAppId = (Request["facebookAppId"] ?? "").Trim();
+            KeyTreeStore.KeyTreeStoreManager.Set("Auth.OAuth.Google.ClientId", googleClientId);
+            KeyTreeStore.KeyTreeStoreManager.Set("Auth.OAuth.Facebook.AppId", facebookAppId);
+            saveOAuthMessage = "OAuth ayarlari basariyla kaydedildi.";
+        }
+        catch (Exception ex)
+        {
+            saveOAuthMessage = "OAuth ayarlari kaydedilemedi: " + ex.Message;
+        }
+    }
+}
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AuthKit Setup</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+
+<body class="p-4">
+    <div class="container">
+        <h2>AuthKit Kurulum Paneli</h2>
+
+        @if (!typesReady)
+        {
+            <div class="alert alert-warning">
+                <h5>Data Tipleri Henuz Yuklenmedi</h5>
+                <p>AuthKit DLL ve DataMetaData dosyalari kopyalandi, ancak C1 CMS henuz yeni data tiplerini tanimadi.</p>
+                <p><strong>Yapmaniz gereken:</strong></p>
+                <ol>
+                    <li>Su adrese gidin: <a href="/Composite/updated.aspx"
+                                                target="_blank"><code>/Composite/updated.aspx</code></a></li>
+                        <li>Bu sayfa C1 CMS'in tipleri yeniden derlemesini saglayacak</li>
+                        <li>Sonra bu sayfayi yenileyin (F5)</li>
+                    </ol>
+                </div>
+            }
+    else
+            {
+                if (!string.IsNullOrEmpty(result))
+                {
+                    <div class="alert alert-info">
+                        <pre>@result</pre>
+                    </div>
+                }
+
+                <div class="alert @(initDone ? "alert-success" : "alert-info")">
+                    AuthKit durumu: <strong>@(initDone ? "Baslatildi" : "Baslatiliyor...")</strong>
+                    if (initDone)
+                    {
+                    <span> - GroupKeys ve Permission senkronizasyonu tamamlandi.</span>
+                    }
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">Kurulacak 9 Sayfa</div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Sayfa</th>
+                                    <th>URL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Kullanici Yonetimi</td>
+                                    <td>/Users</td>
+                                </tr>
+                                <tr>
+                                    <td>Grup Yonetimi</td>
+                                    <td>/Groups</td>
+                                </tr>
+                                <tr>
+                                    <td>Grup Yetkileri</td>
+                                    <td>/Group-Permissions</td>
+                                </tr>
+                                <tr>
+                                    <td>Kullanici Yetkileri</td>
+                                    <td>/User-Permissions</td>
+                                </tr>
+                                <tr>
+                                    <td>Giris</td>
+                                    <td>/Login</td>
+                                </tr>
+                                <tr>
+                                    <td>Kayit</td>
+                                    <td>/Register</td>
+                                </tr>
+                                <tr>
+                                    <td>Sifremi Unuttum</td>
+                                    <td>/Forgot-Password</td>
+                                </tr>
+                                <tr>
+                                    <td>Sifre Sifirla</td>
+                                    <td>/Reset-Password</td>
+                                </tr>
+                                <tr>
+                                    <td>Cikis</td>
+                                    <td>/Logout</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">OAuth Yapilandirma (Google / Facebook Giris)</div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(saveOAuthMessage))
+                        {
+                            <div class="alert alert-success">@saveOAuthMessage</div>
+                        }
+                        <p class="text-muted">Google ve Facebook ile giris yapmak icin istemci kimliklerini (Client ID / App ID)
+                            asagiya girin ve kaydedin.</p>
+                            <form method="post" action="?action=saveoauth">
+                                <div class="mb-3">
+                                    <label class="form-label">Google Client ID</label>
+                                    <input type="text" class="form-control" name="googleClientId"
+                                           value="@(AuthKit.Authentication.AuthenticationManager.GoogleClientId)"
+                                           placeholder="xxxxxx.apps.googleusercontent.com" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Facebook App ID</label>
+                                    <input type="text" class="form-control" name="facebookAppId"
+                                           value="@(AuthKit.Authentication.AuthenticationManager.FacebookAppId)"
+                                           placeholder="1234567890123456" />
+                                </div>
+                                <button type="submit" class="btn btn-secondary">OAuth Ayarlarini Kaydet</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <a href="?action=create" class="btn btn-primary btn-lg"
+                       onclick="return confirm('9 sayfa olusturulacak. Devam etmek istiyor musunuz?');">
+                        Sayfalari Olustur
+                    </a>
+                    <p class="text-muted mt-2">Var olan sayfalar atlanir.</p>
+                }
+            </div>
+        </body>
+
+    </html>

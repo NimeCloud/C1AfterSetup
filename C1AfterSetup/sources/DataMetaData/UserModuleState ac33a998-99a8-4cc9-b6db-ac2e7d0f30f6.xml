@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DataTypeDescriptor dataTypeId="ac33a998-99a8-4cc9-b6db-ac2e7d0f30f6" name="UserModuleState" namespace="AuthKit.Data.Authorization" title="AuthKit.Data.Authorization.UserModuleState" isCodeGenerated="true" cachable="false" searchable="false" labelFieldName="RefUserId" typeManagerTypeName="AuthKit.Data.Authorization.UserModuleState">
+  <DataAssociations />
+  <DataScopes>
+    <DataScopeIdentifier name="public" />
+  </DataScopes>
+  <KeyPropertyNames>
+    <KeyPropertyName name="Id" />
+  </KeyPropertyNames>
+  <SuperInterfaces />
+  <Fields>
+    <DataFieldDescriptor id="183dc6e8-36fd-4946-929b-0446f43dd54e" name="Id" isNullable="false" position="0" groupByPriority="0" inherited="false" instanceType="System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" storeType="PhysicalStoreType='String'Length='22'" isReadOnly="false" defaultValue="ValueType='RandomString'Length='8'CheckCollisions='False'">
+      <FormRenderingProfile label="Id" />
+      <DataUrlProfile Order="0" />
+      <ValidationFunctionMarkups />
+    </DataFieldDescriptor>
+    <DataFieldDescriptor id="cd26836b-7fbd-4e34-b8e7-80ddca986706" name="RefUserId" isNullable="false" position="0" groupByPriority="0" inherited="false" instanceType="System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" storeType="PhysicalStoreType='String'Length='22'" isReadOnly="false" defaultValue="ValueType='String'Value=''" foreignKeyReferenceTypeName="AuthKit.Data.Authentication.User">
+      <FormRenderingProfile label="RefUserId" helpText="" widgetFunctionMarkup="&lt;f:widgetfunction xmlns:f=&quot;http://www.composite.net/ns/function/1.0&quot; name=&quot;Composite.Widgets.DataReference.AuthKitDataAuthenticationUser.Selector&quot; /&gt;" />
+      <ValidationFunctionMarkups />
+    </DataFieldDescriptor>
+    <DataFieldDescriptor id="003eda27-66fe-4539-9ba0-999ba2455c6a" name="RefModuleId" isNullable="false" position="1" groupByPriority="0" inherited="false" instanceType="System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" storeType="PhysicalStoreType='String'Length='22'" isReadOnly="false" defaultValue="ValueType='String'Value=''" foreignKeyReferenceTypeName="AuthKit.Data.Authorization.Module">
+      <FormRenderingProfile label="RefModuleId" helpText="" widgetFunctionMarkup="&lt;f:widgetfunction xmlns:f=&quot;http://www.composite.net/ns/function/1.0&quot; name=&quot;Composite.Widgets.DataReference.AuthKitDataAuthorizationModule.Selector&quot; /&gt;" />
+    </DataFieldDescriptor>
+    <DataFieldDescriptor id="6ac5a300-a51f-414c-b118-23b3dcb0e510" name="IsActive" isNullable="false" position="2" groupByPriority="0" inherited="false" instanceType="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" storeType="PhysicalStoreType='Boolean'" isReadOnly="false" defaultValue="ValueType='Boolean'Value='False'">
+      <FormRenderingProfile label="IsActive" helpText="" widgetFunctionMarkup="&lt;f:widgetfunction xmlns:f=&quot;http://www.composite.net/ns/function/1.0&quot; name=&quot;Composite.Widgets.Bool.CheckBox&quot; /&gt;" />
+    </DataFieldDescriptor>
+  </Fields>
+</DataTypeDescriptor>

@@ -1,0 +1,301 @@
+﻿@inherits RazorPageTemplate
+
+@functions {
+    public override void Configure()
+    {
+        TemplateId = new Guid("f9a2e1d7-8c3b-4b2a-9e1f-1a2b3c4d5e6f");
+        TemplateTitle = "AuthKit.UserManagementPage";
+        Layout = "AuthKit.PanelLayout.cshtml";
+    }
+}
+
+@{
+    var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
+    if (currentUser == null)
+    {
+        // LoginPageId set edilmemisse fallback URL kullan
+        var loginPageId = AuthKit.Authentication.AuthenticationManager.LoginPageId;
+        string urlCurrent = HttpContext.Current.Request.Url.AbsoluteUri;
+        if (loginPageId != Guid.Empty)
+        {
+            var loginUrl = AuthKit.C1.C1UrlHelper.GetUrlFromPageId(loginPageId, "~/login");
+            Response.Redirect(loginUrl + "?redirect=" + HttpUtility.UrlEncode(urlCurrent));
+        }
+        else
+        {
+            Response.Redirect("~/login?redirect=" + HttpUtility.UrlEncode(urlCurrent));
+        }
+    }
+}
+
+<div>
+    @* CSS: DataTables, PanelLayout icerisinde CDN ile yuklenir *@
+
+    <div class="card">
+        <ul class="nav nav-pills user-profile-tab" id="pills-tab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button
+                    class="nav-link position-relative rounded-0 d-flex align-items-center justify-content-center bg-transparent fs-3 py-3 active"
+                    id="pills-real-users-tab" data-bs-toggle="pill" data-bs-target="#pills-real-users" type="button"
+                    role="tab">
+                    <i class="ti ti-user-circle me-2 fs-6"></i>
+                    <span class="d-none d-md-block">Kullanıcılar</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button
+                    class="nav-link position-relative rounded-0 d-flex align-items-center justify-content-center bg-transparent fs-3 py-3"
+                    id="pills-template-users-tab" data-bs-toggle="pill" data-bs-target="#pills-template-users"
+                    type="button" role="tab">
+                    <i class="ti ti-file-text me-2 fs-6"></i>
+                    <span class="d-none d-md-block">Şablon Kullanıcılar</span>
+                </button>
+            </li>
+        </ul>
+        <div class="card-body">
+            <div class="tab-content" id="pills-tabContent">
+                <div class="tab-pane fade active show" id="pills-real-users" role="tabpanel">
+                    <p class="card-subtitle mb-4">Sisteme giriş yapabilen tüm kullanıcıları buradan yönetebilirsiniz.
+                    </p>
+                    <div class="table-responsive">
+                        <table id="real-users-table" class="table table-bordered table-striped" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Id</th>
+                                    <th>Kullanıcı Adı</th>
+                                    <th>E-posta</th>
+                                    <th>Aktif</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="pills-template-users" role="tabpanel">
+                    <p class="card-subtitle mb-4">Yeni kullanıcılar için şablon hesapları buradan yönetebilirsiniz.</p>
+                    <div class="table-responsive">
+                        <table id="template-users-table" class="table table-bordered table-striped" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Id</th>
+                                    <th>Kullanıcı Adı</th>
+                                    <th>E-posta</th>
+                                    <th>Aktif</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    //<![CDATA[
+    // ========== DataTable Editor Tanimi ==========
+    // NOT: Bu sayfa DataTables Editor (https://editor.datatables.net/) kullanir.
+    // Lisans gerektirir. Alternatif olarak manuel AJAX modal yapabilirsiniz.
+
+    var editor;
+
+    function initializeDataTable(tableId, ajaxUrl, isTemplateTable) {
+        var columns = [
+            { "data": "Id" }, { "data": "UserName" }, { "data": "Email" }, { "data": "IsActive" }
+        ];
+
+        if (editor) editor.destroy();
+
+        editor = new $.fn.dataTable.Editor({
+            ajax: {
+                create: {
+                    url: '/Api/AddUser', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                    data: function (d) { var row = d.data[0]; if (!isTemplateTable) { row.SourceUserId = $('#alteditor-clone-user-select').val() || null; } return JSON.stringify(row); }
+                },
+                edit: {
+                    url: '/Api/UpdateUser', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                    data: function (d) { return JSON.stringify(d.data[0]); }
+                },
+                remove: {
+                    url: '/Api/DeleteUser', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                    data: function (d) { return JSON.stringify(d.data[0]); }
+                }
+            },
+            table: '#' + tableId,
+            idSrc: 'Id',
+            fields: [
+                { name: 'Id', type: 'hidden' },
+                { name: 'UserName', label: 'Kullanıcı Adı', type: 'text' },
+                { name: 'Email', label: 'E-posta', type: 'text' },
+                {
+                    name: 'PasswordHash', label: 'Parola', type: 'text',
+                    def: function () { return ''; }
+                },
+                {
+                    name: 'IsActive', label: 'Aktif', type: 'checkbox',
+                    def: function () { return true; }
+                }
+            ],
+            i18n: {
+                create: { title: 'Yeni Kullanıcı', button: 'Ekle', submit: 'Kaydet' },
+                edit: { title: 'Kullanıcıyı Düzenle', button: 'Düzenle', submit: 'Güncelle' },
+                remove: { title: 'Kullanıcıyı Sil', button: 'Sil', submit: 'Sil', confirm: { _: 'Bu kullanıcı kalıcı olarak silinecek. Emin misiniz?', 1: 'Bu %d kullanıcı kalıcı olarak silinecek. Emin misiniz?' } }
+            }
+        });
+
+        // Parola degisim butonu (admin)
+        editor.on('open', function (e, mode) {
+            if (mode === 'edit') {
+                setTimeout(function () {
+                    if ($('.DTE_Action_ChangePassword').length === 0) {
+                        $('.DTE_Form_Buttons').prepend(
+                            '<button class="btn DTE_Action_ChangePassword" type="button">Parola Değiştir</button>');
+                        $('.DTE_Action_ChangePassword').on('click', function () {
+                            var data = editor.get();
+                            Swal.fire({
+                                title: data.UserName + ' için yeni parola',
+                                html: '<input type="password" id="swal-input-password" class="swal2-input" placeholder="Yeni Parola">',
+                                showCancelButton: true,
+                                preConfirm: function () {
+                                    var pw = $('#swal-input-password').val();
+                                    if (!pw || pw.length < 6) { Swal.showValidationMessage('En az 6 karakter'); return false; }
+                                    return { newPassword: pw };
+                                }
+                            }).then(function (result) {
+                                if (result.isConfirmed) {
+                                    $.ajax({
+                                        url: '/Api/AdminChangePassword', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                                        data: JSON.stringify({ userId: data.Id, newPassword: result.value.newPassword }),
+                                        success: function () { Swal.fire('Başarılı!', 'Parola güncellendi.', 'success'); },
+                                        error: function () { Swal.fire('Hata!', 'Parola güncellenemedi.', 'error'); }
+                                    });
+                                }
+                            });
+                        });
+                    }
+                }, 100);
+            }
+        });
+
+        // Grup yonetimi butonu (satir secildiginde)
+        editor.on('open', function (e, mode) {
+            if (mode === 'edit') {
+                setTimeout(function () {
+                    if ($('.DTE_Action_ManageGroups').length === 0) {
+                        $('.DTE_Form_Buttons').prepend(
+                            '<button class="btn DTE_Action_ManageGroups" type="button">Grup Üyelikleri</button>');
+                        $('.DTE_Action_ManageGroups').on('click', function () {
+                            var data = editor.get();
+                            openUserGroupManagementModal(data.Id, data.UserName); // asagida tanimli
+                        });
+                    }
+                }, 100);
+            }
+        });
+
+        // Tablo olustur
+        var dt = $('#' + tableId).DataTable({
+            dom: 'Bfrtip',
+            ajax: {
+                url: ajaxUrl, type: 'POST', contentType: 'text/plain; charset=utf-8',
+                data: function (d) { return JSON.stringify(d); }
+            },
+            columns: columns,
+            select: true,
+            buttons: [
+                { extend: 'create', editor: editor },
+                { extend: 'edit', editor: editor },
+                { extend: 'remove', editor: editor }
+            ]
+        });
+
+        // Editor modal acildiginda sablon dropdown'i
+        if (!isTemplateTable) {
+            editor.on('open', function (e, mode) {
+                if (mode === 'create') {
+                    setTimeout(function () {
+                        if ($('#alteditor-clone-user-row').length === 0) {
+                            var cloneRow = $('<div class="mb-3 row" id="alteditor-clone-user-row"><label class="col-md-4">Şablondan Kopyala</label><div class="col-md-8"><select id="alteditor-clone-user-select" class="form-select"><option value="">Kopyalama...</option></select></div></div>');
+                            $('.DTE_Field_Name_password').before(cloneRow);
+                            $.ajax({
+                                url: '/Api/GetTemplateUsers', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                                success: function (r) {
+                                    if (r.data) r.data.forEach(function (u) { $('#alteditor-clone-user-select').append(new Option(u.UserName, u.Id)); });
+                                }
+                            });
+                        }
+                    }, 50);
+                }
+            });
+        }
+    }
+
+    // Baslat
+    $(function () {
+        initializeDataTable('real-users-table', '/Api/GetRealUsers', false);
+        initializeDataTable('template-users-table', '/Api/GetTemplateUsers', true);
+    });
+
+    // Grup uyelik modal'i (kisaltilmis)
+    function openUserGroupManagementModal(userId, userName) {
+        var changes = { added: new Set(), removed: new Set() };
+        var initialMemberIds = new Set();
+        var modalInstance, table;
+
+        $.ajax({
+            url: '/Api/GetAllGroupIdsForUser', type: 'POST', contentType: 'text/plain; charset=utf-8',
+            data: JSON.stringify({ userId: userId }),
+            success: function (r) { if (r.data) r.data.forEach(function (id) { initialMemberIds.add(id.toString()); }); }
+        });
+
+        var modalHtml = '<div class="modal fade" id="userGroupsModal" tabindex="-1">' +
+            '<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">' +
+            '<div class="modal-header"><h5 class="modal-title">' + userName + ' - Grup Üyelikleri</h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
+            '<div class="modal-body"><table id="groups-for-user-table" class="table table-bordered" style="width:100%">' +
+            '<thead><tr><th></th><th>Grup Adı</th><th>Açıklama</th></tr></thead><tbody></tbody></table></div>' +
+            '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>' +
+            '<button type="button" class="btn btn-primary" id="saveUserGroupsBtn">Kaydet</button></div></div></div></div>';
+
+        $('#userGroupsModal').remove();
+        $('body').append(modalHtml);
+        modalInstance = new bootstrap.Modal(document.getElementById('userGroupsModal'));
+        modalInstance.show();
+
+        table = $('#groups-for-user-table').DataTable({
+            ajax: {
+                url: '/Api/GetAllGroupsForUserManagement', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                data: function (d) { return JSON.stringify({ UserId: userId, DtRequest: d }); }
+            },
+            columns: [
+                { data: 'id', orderable: false, render: function (d) { return '<input type="checkbox" class="dt-checkbox" value="' + d + '">'; } },
+                { data: 'groupName' }, { data: 'description' }
+            ],
+            drawCallback: function () {
+                $('#groups-for-user-table tbody input.dt-checkbox').each(function () {
+                    var gid = $(this).val();
+                    $(this).prop('checked', (initialMemberIds.has(gid) && !changes.removed.has(gid)) || changes.added.has(gid));
+                });
+            }
+        });
+
+        $('#groups-for-user-table tbody').on('change', '.dt-checkbox', function () {
+            var gid = $(this).val(), checked = this.checked;
+            if (initialMemberIds.has(gid)) { checked ? changes.removed.delete(gid) : changes.removed.add(gid); changes.added.delete(gid); }
+            else { checked ? changes.added.add(gid) : changes.added.delete(gid); }
+        });
+
+        $('#saveUserGroupsBtn').on('click', function () {
+            $.ajax({
+                url: '/Api/UpdateUserGroupsDelta', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                data: JSON.stringify({ userId: userId, groupIdsToAdd: Array.from(changes.added), groupIdsToRemove: Array.from(changes.removed) }),
+                success: function () { modalInstance.hide(); Swal.fire('Başarılı!', 'Grup üyelikleri güncellendi.', 'success'); },
+                error: function () { Swal.fire('Hata!', 'Güncelleme başarısız.', 'error'); }
+            });
+        });
+
+        $('#userGroupsModal').on('hidden.bs.modal', function () { $(this).remove(); if (table) table.destroy(); });
+    }
+    //]]>
+</script>

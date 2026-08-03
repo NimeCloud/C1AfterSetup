@@ -1,0 +1,151 @@
+﻿@inherits RazorFunction
+@using System
+@using System.Web
+
+@functions {
+    public override string FunctionDescription => "AuthKit kullanici giris formu (parola + Google/Facebook OAuth)";
+}
+
+@{
+    var error = "";
+    var result = "";
+    if (IsPost)
+    {
+        var provider = Request.Form["provider"];
+        var rememberMe = Request.Form["rememberMe"] == "on";
+        if (provider == "google")
+        {
+            result = AuthKit.Authentication.AuthenticationManager.LoginWithGoogle(Request.Form["credential"], rememberMe);
+        }
+        else if (provider == "facebook")
+        {
+            result = AuthKit.Authentication.AuthenticationManager.LoginWithFacebook(Request.Form["credential"], rememberMe);
+        }
+        else
+        {
+            result = AuthKit.Authentication.AuthenticationManager.Login(Request.Form["username"], Request.Form["password"],
+rememberMe);
+        }
+    }
+
+    if (!string.IsNullOrEmpty(result))
+    {
+        var dict = new System.Web.Script.Serialization.JavaScriptSerializer().DeserializeObject(result) as
+System.Collections.Generic.Dictionary<string, object>;
+        var ok = dict != null && dict.ContainsKey("ok") && Convert.ToBoolean(dict["ok"]);
+        if (ok)
+        {
+            var redirect = Request.QueryString["redirect"];
+            if (!string.IsNullOrEmpty(redirect))
+            {
+                Response.Redirect(redirect);
+            }
+            else
+            {
+                Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/"));
+            }
+        }
+        else
+        {
+            error = (dict != null && dict.ContainsKey("error")) ? Convert.ToString(dict["error"]) : "Giris basarisiz.";
+        }
+    }
+
+    var googleClientId = AuthKit.Authentication.AuthenticationManager.GoogleClientId;
+    var facebookAppId = AuthKit.Authentication.AuthenticationManager.FacebookAppId;
+}
+
+<h4 class="mb-1 fw-semibold">Giriş Yap</h4>
+<p class="mb-3 text-muted">Hesabınıza giriş yapın</p>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger py-2">@error</div>
+}
+
+<form method="post" id="loginForm">
+    <input type="hidden" name="provider" id="oauthProvider" value="" />
+    <input type="hidden" name="credential" id="oauthCredential" value="" />
+    <div class="mb-3">
+        <label class="form-label">Kullanıcı Adı / E-posta</label>
+        <input type="text" class="form-control" name="username" required="required" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Parola</label>
+        <input type="password" class="form-control" name="password" required="required" />
+    </div>
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" name="rememberMe" id="rememberMe" />
+        <label class="form-check-label" for="rememberMe">Beni hatırla</label>
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
+    <div class="d-flex justify-content-between mt-3 small">
+        <a href="~/Register">Kayıt Ol</a>
+        <a href="~/Forgot-Password">Şifremi Unuttum</a>
+    </div>
+</form>
+
+@if (!string.IsNullOrEmpty(googleClientId) || !string.IsNullOrEmpty(facebookAppId))
+{
+    <div class="d-flex align-items-center my-3">
+        <hr class="flex-grow-1" />
+        <span class="px-2 text-muted small">veya</span>
+        <hr class="flex-grow-1" />
+    </div>
+    <div class="d-grid gap-2">
+        @if (!string.IsNullOrEmpty(googleClientId))
+        {
+            <div id="googleBtn" class="text-center"></div>
+        }
+        @if (!string.IsNullOrEmpty(facebookAppId))
+        {
+            <button type="button" class="btn btn-outline-primary w-100" onclick="authkitFacebookLogin();">
+                Facebook ile Giriş Yap
+            </button>
+        }
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(googleClientId))
+{
+    <script src="https://accounts.google.com/gsi/client" async="async" defer="defer"></script>
+}
+@if (!string.IsNullOrEmpty(facebookAppId))
+{
+    var fbSdkUrl = "https://connect.facebook.net/tr_TR/sdk.js#xfbml=1&version=v18.0&appId=" + facebookAppId;
+    <script async="async" defer="defer" crossorigin="anonymous" src="@fbSdkUrl"></script>
+}
+
+<script>
+    //<![CDATA[
+    var authkitGoogleClientId = '@googleClientId';
+    var authkitFacebookAppId = '@facebookAppId';
+
+    function authkitSubmitOAuth(provider, credential) {
+    document.getElementById('oauthProvider').value = provider;
+    document.getElementById('oauthCredential').value = credential;
+    document.getElementById('loginForm').submit();
+    }
+
+    function authkitGoogleCallback(response) {
+    if (response && response.credential) {
+    authkitSubmitOAuth('google', response.credential);
+    }
+    }
+
+    function authkitFacebookLogin() {
+    FB.login(function (response) {
+    if (response.authResponse) {
+    authkitSubmitOAuth('facebook', response.authResponse.accessToken);
+    }
+    }, { scope: 'email' });
+    }
+
+    window.addEventListener('load', function () {
+    if (authkitGoogleClientId && window.google && google.accounts && google.accounts.id) {
+    google.accounts.id.initialize({ client_id: authkitGoogleClientId, callback: authkitGoogleCallback });
+    google.accounts.id.renderButton(document.getElementById('googleBtn'), { theme: 'outline', size: 'large', width: 300 });
+    }
+    });
+    //]]>
+</script>

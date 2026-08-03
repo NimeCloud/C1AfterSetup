@@ -1,0 +1,73 @@
+﻿@inherits RazorFunction
+@using System
+
+@functions {
+    public override string FunctionDescription => "AuthKit kayit formu";
+}
+
+@{
+    var error = "";
+    var success = false;
+    if (IsPost)
+    {
+        var username = Request.Form["username"];
+        var email = Request.Form["email"];
+        var password = Request.Form["password"];
+        var confirm = Request.Form["confirm"];
+        if (password != confirm)
+        {
+            error = "Parolalar eslesmiyor.";
+        }
+        else
+        {
+            var result = AuthKit.Authentication.AuthenticationManager.CreateUser(username, email, password, true, false);
+            if (result.IsSuccess)
+            {
+                success = true;
+            }
+            else
+            {
+                error = result.ErrorMessage;
+            }
+        }
+    }
+}
+
+<h4 class="mb-1 fw-semibold">Kayıt Ol</h4>
+<p class="mb-3 text-muted">Yeni bir hesap oluşturun</p>
+
+@if (success)
+{
+    <div class="alert alert-success py-2">Hesabınız oluşturuldu. Giriş yapabilirsiniz.</div>
+    <a class="btn btn-primary w-100" href="~/Login">Giriş Yap</a>
+}
+
+@if (!success)
+{
+    if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger py-2">@error</div>
+    }
+    <form method="post">
+        <div class="mb-3">
+            <label class="form-label">Kullanıcı Adı</label>
+            <input type="text" class="form-control" name="username" required="required" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">E-posta</label>
+            <input type="email" class="form-control" name="email" required="required" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Parola</label>
+            <input type="password" class="form-control" name="password" required="required" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Parola (Tekrar)</label>
+            <input type="password" class="form-control" name="confirm" required="required" />
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Kayıt Ol</button>
+        <div class="text-center mt-3 small">
+            <a href="~/Login">Zaten hesabınız var mı? Giriş Yapın</a>
+        </div>
+    </form>
+}

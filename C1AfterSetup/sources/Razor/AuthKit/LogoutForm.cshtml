@@ -1,0 +1,19 @@
+﻿@inherits RazorFunction
+@using System
+
+@functions {
+    public override string FunctionDescription => "AuthKit cikis isleyicisi";
+}
+
+@{
+    AuthKit.Authentication.AuthenticationManager.Logout();
+    var loginPageId = AuthKit.Authentication.AuthenticationManager.LoginPageId;
+    if (loginPageId != Guid.Empty)
+    {
+        Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(loginPageId, "~/Login"));
+    }
+    else
+    {
+        Response.Redirect("~/Login");
+    }
+}

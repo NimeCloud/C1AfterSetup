@@ -1,0 +1,182 @@
+﻿@inherits RazorPageTemplate
+
+@functions {
+    public override void Configure()
+    {
+        TemplateId = new Guid("ff5a0c90-7f64-4e56-b9b9-1c078276f4c2");
+        TemplateTitle = "AuthKit.GroupPermissionPage";
+        Layout = "AuthKit.PanelLayout.cshtml";
+    }
+}
+
+@{
+    var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
+    if (currentUser == null)
+    {
+        var loginPageId = AuthKit.Authentication.AuthenticationManager.LoginPageId;
+        string urlCurrent = HttpContext.Current.Request.Url.AbsoluteUri;
+        if (loginPageId != Guid.Empty)
+        {
+            Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(loginPageId, "~/login") + "?redirect=" +
+                HttpUtility.UrlEncode(urlCurrent));
+        }
+        else
+        {
+            Response.Redirect("~/login?redirect=" + HttpUtility.UrlEncode(urlCurrent));
+        }
+    }
+}
+
+<style>
+    .permission-check[data-type="deny"]:checked {
+        accent-color: #dc3545;
+    }
+
+    .permission-check[data-type="allow"]:checked {
+        accent-color: #198754;
+    }
+
+    .row-deny {
+        background-color: #fff5f5 !important;
+    }
+
+    .row-allow {
+        background-color: #f0fff4 !important;
+    }
+
+    .section-check[data-type="deny"]:checked {
+        accent-color: #dc3545;
+    }
+</style>
+
+<div class="card">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-5">
+                <label for="groupSelector" class="form-label">Grup Seçin</label>
+                <select id="groupSelector" class="form-select">
+                    <option selected disabled value="">Grup seçiniz...</option>
+                </select>
+            </div>
+            <div class="col-md-7">
+                <button id="savePermissionsBtn" class="btn btn-primary" disabled>Yetkileri Kaydet</button>
+            </div>
+        </div>
+
+        <div id="permissionsContainer" class="mt-4">
+            <div class="d-flex align-items-center justify-content-center" style="min-height: 200px;">
+                <p class="text-muted">Yetkileri görmek için bir grup seçin.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    //<![CDATA[
+    $(function () {
+        const groupSelector = $('#groupSelector');
+        const permissionsContainer = $('#permissionsContainer');
+        const savePermissionsBtn = $('#savePermissionsBtn');
+
+        function loadGroups() {
+            $.ajax({
+                url: '/Api/GetAllGroupsForDropdown', type: 'POST',
+                success: function (response) {
+                    if (response.data) {
+                        response.data.forEach(function (group) {
+                            groupSelector.append(new Option(group.GroupName, group.Id));
+                        });
+                    }
+                }
+            });
+        }
+        loadGroups();
+
+        groupSelector.on('change', function () {
+            const selectedGroupId = $(this).val();
+            if (!selectedGroupId) return;
+
+            savePermissionsBtn.prop('disabled', false);
+            permissionsContainer.html('<div class="text-center p-4">Yetkiler yükleniyor...</div>');
+
+            $.when(
+                $.ajax({ url: '/Api/GetAllModulesAndPermissions', type: 'POST', contentType: 'text/plain; charset=utf-8', data: '{}' }),
+                $.ajax({ url: '/Api/GetPermissionsForGroup', type: 'POST', contentType: 'text/plain; charset=utf-8', data: JSON.stringify({ groupId: selectedGroupId }) })
+            ).done(function (allRes, groupRes) {
+                renderPermissions(allRes[0].data, groupRes[0].data);
+            }).fail(function () {
+                permissionsContainer.html('<div class="alert alert-danger">Yetkiler yüklenirken hata oluştu.</div>');
+            });
+        });
+
+        function renderPermissions(modules, assignedPermissions) {
+            let html = '<div class="table-responsive"><table class="table table-bordered table-hover"><thead><tr>' +
+                '<th>Yetki</th><th class="text-center" style="width:100px">İzin Ver</th><th class="text-center" style="width:100px">Yasakla</th></tr></thead><tbody>';
+
+            modules.forEach(function (module) {
+                html += '<tr class="table-secondary"><td colspan="3"><strong>' + module.ModuleName + '</strong></td></tr>';
+                module.Permissions.forEach(function (p) {
+                    const isAssigned = assignedPermissions.hasOwnProperty(p.Id);
+                    const isAllowed = isAssigned && assignedPermissions[p.Id] === true;
+                    const isDenied = isAssigned && assignedPermissions[p.Id] === false;
+                    html += '<tr data-permissionid="' + p.Id + '">' +
+                        '<td>' + p.Description + ' <small class="text-muted">(' + (p.Name || '') + ')</small></td>' +
+                        '<td class="text-center"><input class="form-check-input permission-check" type="checkbox" data-type="allow" ' + (isAllowed ? 'checked' : '') + '></td>' +
+                        '<td class="text-center"><input class="form-check-input permission-check" type="checkbox" data-type="deny" ' + (isDenied ? 'checked' : '') + '></td></tr>';
+                });
+            });
+
+            html += '</tbody></table></div>';
+            permissionsContainer.html(html);
+            $('tr[data-permissionid]').each(function () { updateRowAppearance($(this)); });
+        }
+
+        function updateRowAppearance(row) {
+            row.removeClass('row-allow row-deny');
+            const allowCheck = row.find('.permission-check[data-type="allow"]');
+            const denyCheck = row.find('.permission-check[data-type="deny"]');
+            if (denyCheck.is(':checked')) row.addClass('row-deny');
+            else if (allowCheck.is(':checked')) row.addClass('row-allow');
+        }
+
+        permissionsContainer.on('change', '.permission-check', function () {
+            const checkbox = $(this);
+            const row = checkbox.closest('tr');
+            const type = checkbox.data('type');
+            if (checkbox.is(':checked')) {
+                row.find('.permission-check[data-type="' + (type === 'allow' ? 'deny' : 'allow') + '"]').prop('checked', false);
+            }
+            updateRowAppearance(row);
+        });
+
+        savePermissionsBtn.on('click', function () {
+            const btn = $(this);
+            const selectedGroupId = groupSelector.val();
+            const permissionsToUpdate = [];
+
+            $('tr[data-permissionid]').each(function () {
+                const row = $(this);
+                const permissionId = row.data('permissionid');
+                const allowCheck = row.find('.permission-check[data-type="allow"]');
+                const denyCheck = row.find('.permission-check[data-type="deny"]');
+                let state = "clear";
+                if (allowCheck.is(':checked')) state = "allow";
+                else if (denyCheck.is(':checked')) state = "deny";
+                permissionsToUpdate.push({ PermissionId: permissionId, State: state });
+            });
+
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Kaydediliyor...');
+            $.ajax({
+                url: '/Api/UpdatePermissionsForGroup', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                data: JSON.stringify({ groupId: selectedGroupId, permissions: permissionsToUpdate })
+            }).done(function () {
+                Swal.fire('Başarılı!', 'Grup yetkileri güncellendi.', 'success');
+            }).fail(function () {
+                Swal.fire('Hata!', 'Yetkiler güncellenirken bir hata oluştu.', 'error');
+            }).always(function () {
+                btn.prop('disabled', false).html('Yetkileri Kaydet');
+            });
+        });
+    });
+    //]]>
+</script>

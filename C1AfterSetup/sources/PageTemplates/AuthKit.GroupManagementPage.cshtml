@@ -1,0 +1,184 @@
+﻿@inherits RazorPageTemplate
+
+@functions {
+    public override void Configure()
+    {
+        TemplateId = new Guid("50562763-9421-40b6-8897-5214ab170051");
+        TemplateTitle = "AuthKit.GroupManagementPage";
+        Layout = "AuthKit.PanelLayout.cshtml";
+    }
+}
+
+@{
+    var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
+    if (currentUser == null || !AuthKit.Authorization.AuthorizationManager.HasPermission(currentUser,
+        AuthKit.Authorization.PermissionKeys.Auth.Groups.View))
+    {
+        var loginPageId = AuthKit.Authentication.AuthenticationManager.LoginPageId;
+        if (loginPageId != Guid.Empty)
+        {
+            Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(loginPageId, "~/login"));
+        }
+        else
+        {
+            Response.Redirect("~/login");
+        }
+    }
+}
+
+<div>
+    @* CSS: DataTables, PanelLayout icerisinde CDN ile yuklenir *@
+
+    <div class="card">
+        <div class="card-body">
+            <p class="card-subtitle mb-4">Sistemdeki tüm kullanıcı gruplarını buradan yönetebilirsiniz.</p>
+            <div class="table-responsive mt-4">
+                <table id="groups-table" class="table table-bordered table-striped" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Id</th>
+                            <th>Grup Adı</th>
+                            <th>Açıklama</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    //<![CDATA[
+    $(function () {
+        var editor = new $.fn.dataTable.Editor({
+            ajax: {
+                create: {
+                    url: '/Api/AddGroup', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                    data: function (d) {
+                        var row = d.data[0];
+                        row.SourceGroupId = $('#alteditor-clone-group-select').val() || null;
+                        return JSON.stringify(row);
+                    }
+                },
+                edit: {
+                    url: '/Api/UpdateGroup', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                    data: function (d) { return JSON.stringify(d.data[0]); }
+                },
+                remove: {
+                    url: '/Api/DeleteGroup', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                    data: function (d) { return JSON.stringify(d.data[0]); }
+                }
+            },
+            table: '#groups-table', idSrc: 'Id',
+            fields: [
+                { name: 'Id', type: 'hidden' },
+                { name: 'GroupName', label: 'Grup Adı', type: 'text' },
+                { name: 'Description', label: 'Açıklama', type: 'text' }
+            ],
+            i18n: {
+                create: { title: 'Yeni Grup', button: 'Ekle', submit: 'Kaydet' },
+                edit: { title: 'Grubu Düzenle', button: 'Düzenle', submit: 'Güncelle' },
+                remove: { title: 'Grubu Sil', button: 'Sil', submit: 'Sil', confirm: { _: 'Bu grup ve ilişkili yetkiler silinecek. Emin misiniz?', 1: '%d grup silinecek. Emin misiniz?' } }
+            }
+        });
+
+        // Uye yonetimi butonu
+        editor.on('open', function (e, mode) {
+            if (mode === 'edit') {
+                setTimeout(function () {
+                    if ($('.DTE_Action_ManageMembers').length === 0) {
+                        $('.DTE_Form_Buttons').prepend('<button class="btn DTE_Action_ManageMembers" type="button">Üyeleri Yönet</button>');
+                        $('.DTE_Action_ManageMembers').on('click', function () {
+                            var data = editor.get();
+                            openGroupUserManagementModal(data.Id, data.GroupName);
+                        });
+                    }
+                }, 100);
+            }
+        });
+
+        // Klonlama dropdown'i
+        editor.on('open', function (e, mode) {
+            if (mode === 'create') {
+                setTimeout(function () {
+                    if ($('#alteditor-clone-group-row').length === 0) {
+                        var cloneRow = $('<div class="mb-3 row" id="alteditor-clone-group-row"><label class="col-md-4">Yetkileri Kopyala</label><div class="col-md-8"><select id="alteditor-clone-group-select" class="form-select"><option value="">Kopyalama...</option></select></div></div>');
+                        $('.DTE_Field_Name_description').before(cloneRow);
+                        $.ajax({
+                            url: '/Api/GetAllGroupsForDropdown', type: 'POST',
+                            success: function (r) {
+                                if (r.data) r.data.forEach(function (g) { $('#alteditor-clone-group-select').append(new Option(g.GroupName, g.Id)); });
+                            }
+                        });
+                    }
+                }, 50);
+            }
+        });
+
+        $('#groups-table').DataTable({
+            dom: 'Bfrtip', select: true,
+            ajax: { url: '/Api/GetGroups', type: 'POST', contentType: 'text/plain; charset=utf-8', data: function (d) { return JSON.stringify(d); } },
+            columns: [{ data: 'Id', visible: false }, { data: 'GroupName', title: 'Grup Adı' }, { data: 'Description', title: 'Açıklama' }],
+            buttons: [{ extend: 'create', editor: editor }, { extend: 'edit', editor: editor }, { extend: 'remove', editor: editor }]
+        });
+
+        // Uye yonetim modal'i
+        function openGroupUserManagementModal(groupId, groupName) {
+            var changes = { added: new Set(), removed: new Set() };
+            var initialMemberIds = new Set();
+            var modalInstance, table;
+
+            $.ajax({
+                url: '/Api/GetAllUserIdsForGroup', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                data: JSON.stringify({ groupId: groupId }),
+                success: function (r) { if (r.data) r.data.forEach(function (id) { initialMemberIds.add(id.toString()); }); }
+            });
+
+            var mh = '<div class="modal fade" id="groupUsersModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">' +
+                '<div class="modal-header"><h5 class="modal-title">' + groupName + ' Grubu Üyeleri</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>' +
+                '<div class="modal-body"><table id="users-for-group-table" class="table table-bordered" style="width:100%"><thead><tr><th></th><th>Kullanıcı</th><th>E-posta</th></tr></thead></table></div>' +
+                '<div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button><button class="btn btn-primary" id="saveGroupMembersBtn">Kaydet</button></div></div></div></div>';
+
+            $('#groupUsersModal').remove();
+            $('body').append(mh);
+            modalInstance = new bootstrap.Modal(document.getElementById('groupUsersModal'));
+            modalInstance.show();
+
+            table = $('#users-for-group-table').DataTable({
+                ajax: {
+                    url: '/Api/GetUsersForGroupManagement', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                    data: function (d) { return JSON.stringify({ GroupId: groupId, DtRequest: d }); }
+                },
+                columns: [
+                    { data: 'id', orderable: false, render: function (d) { return '<input type="checkbox" class="dt-checkbox" value="' + d + '">'; } },
+                    { data: 'userName' }, { data: 'email' }
+                ],
+                drawCallback: function () {
+                    $('#users-for-group-table tbody input.dt-checkbox').each(function () {
+                        var uid = $(this).val();
+                        $(this).prop('checked', (initialMemberIds.has(uid) && !changes.removed.has(uid)) || changes.added.has(uid));
+                    });
+                }
+            });
+
+            $('#users-for-group-table tbody').on('change', '.dt-checkbox', function () {
+                var uid = $(this).val(), checked = this.checked;
+                if (initialMemberIds.has(uid)) { checked ? changes.removed.delete(uid) : changes.removed.add(uid); changes.added.delete(uid); }
+                else { checked ? changes.added.add(uid) : changes.added.delete(uid); }
+            });
+
+            $('#saveGroupMembersBtn').on('click', function () {
+                $.ajax({
+                    url: '/Api/UpdateGroupMembersDelta', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                    data: JSON.stringify({ groupId: groupId, userIdsToAdd: Array.from(changes.added), userIdsToRemove: Array.from(changes.removed) }),
+                    success: function () { modalInstance.hide(); Swal.fire('Başarılı!', 'Üyeler güncellendi.', 'success'); },
+                    error: function () { Swal.fire('Hata!', 'Güncelleme başarısız.', 'error'); }
+                });
+            });
+
+            $('#groupUsersModal').on('hidden.bs.modal', function () { $(this).remove(); if (table) table.destroy(); });
+        }
+    });
+    //]]>
+</script>
