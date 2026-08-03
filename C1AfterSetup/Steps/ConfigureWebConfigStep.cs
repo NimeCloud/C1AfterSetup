@@ -128,6 +128,26 @@ namespace C1AfterSetup.Steps
                 }
             }
 
+            // 4) compilation/assemblies: App_Code'un ihtiyaç duyduğu framework referansları
+            //    (örn. System.Net.Http) Web.config'te eksikse eklenir.
+            if (cfg.AssemblyReferences != null && cfg.AssemblyReferences.Count > 0)
+            {
+                XmlElement sysWeb = GetOrCreate(doc.DocumentElement, "system.web");
+                XmlElement compilation = GetOrCreate(sysWeb, "compilation");
+                XmlElement assemblies = GetOrCreate(compilation, "assemblies");
+                foreach (string asm in cfg.AssemblyReferences)
+                {
+                    if (!HasAssembly(assemblies, asm))
+                    {
+                        XmlElement addEl = doc.CreateElement("add");
+                        addEl.SetAttribute("assembly", asm);
+                        assemblies.AppendChild(addEl);
+                        context.Log("  + compilation assemblies add " + asm);
+                        changed = true;
+                    }
+                }
+            }
+
             if (changed)
             {
                 doc.Save(webConfigPath);
@@ -213,7 +233,29 @@ namespace C1AfterSetup.Steps
                 }
             }
 
+            if (cfg.AssemblyReferences != null && cfg.AssemblyReferences.Count > 0)
+            {
+                var sysWeb = doc.DocumentElement["system.web"];
+                var compilation = sysWeb != null ? sysWeb["compilation"] : null;
+                var assemblies = compilation != null ? compilation["assemblies"] : null;
+                if (assemblies == null) return false;
+                foreach (string asm in cfg.AssemblyReferences)
+                {
+                    if (!HasAssembly(assemblies, asm)) return false;
+                }
+            }
+
             return true;
+        }
+
+        private static bool HasAssembly(XmlElement assemblies, string assemblyName)
+        {
+            foreach (XmlNode n in assemblies.SelectNodes("add"))
+            {
+                if (n.Attributes != null && n.Attributes["assembly"] != null && n.Attributes["assembly"].Value == assemblyName)
+                    return true;
+            }
+            return false;
         }
 
         private static bool HasRemove(XmlElement customHeaders, string name)

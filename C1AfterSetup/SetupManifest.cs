@@ -60,10 +60,18 @@ namespace C1AfterSetup
         public List<string> RemoveCustomHeaders { get; set; }
         public List<ModuleEntry> AddModules { get; set; }
 
+        /// <summary>
+        /// App_Code derlemesinin referans vermesi gereken framework assembly'leri (tam nitelikli adlar).
+        /// Web.config'in <system.web>/<compilation>/<assemblies> bölümüne eksikse eklenir.
+        /// Örnek: "System.Net.Http, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"
+        /// </summary>
+        public List<string> AssemblyReferences { get; set; }
+
         public WebConfigSettings()
         {
             RemoveCustomHeaders = new List<string>();
             AddModules = new List<ModuleEntry>();
+            AssemblyReferences = new List<string>();
         }
     }
 

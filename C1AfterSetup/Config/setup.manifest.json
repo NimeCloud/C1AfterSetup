@@ -132,6 +132,10 @@
                 "name": "HeaderCleanupModule",
                 "type": "HeaderCleanupModule"
             }
+        ],
+        "assemblyReferences": [
+            "System.Net.Http, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
+            "System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35"
         ]
     }
 }
