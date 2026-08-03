@@ -77,6 +77,23 @@ namespace KeyTreeStore
             return true;
         }
 
+        /// <summary>
+        /// Root sentinel'in (top-level, Key = "Root") var olduğundan emin olur; yoksa oluşturur.
+        /// C1 Data sekmesinde tüm parent/child'lar tek kök altında toplansın diye başlangıçta çağrılır.
+        /// </summary>
+        public static void EnsureRoot()
+        {
+            using (var connection = new DataConnection())
+            {
+                if (ResolveRootId(connection) != null) return;
+                var root = DataFacade.BuildNew<AuthKit.KeyTreeStore.Data.KeyTreeItem>();
+                root.Key = "Root";
+                root.Value = string.Empty; // root değeri olmaz
+                root.RefParentId = null;
+                DataFacade.AddNew(root);
+            }
+        }
+
         #endregion --- Yardımcı Metotlar ---
 
         #region --- Ayar Okuma (Read) ---

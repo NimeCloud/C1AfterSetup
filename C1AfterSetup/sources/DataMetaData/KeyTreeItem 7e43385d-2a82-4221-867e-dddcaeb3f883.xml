@@ -15,13 +15,13 @@
       <ValidationFunctionMarkups />
     </DataFieldDescriptor>
     <DataFieldDescriptor id="9bc8d145-6f59-4091-b6e3-6a4040ed4850" name="Key" isNullable="true" position="0" groupByPriority="0" inherited="false" instanceType="System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" storeType="PhysicalStoreType='String'Length='256'" isReadOnly="false">
-      <FormRenderingProfile label="Key" helpText="" widgetFunctionMarkup="<f:widgetfunction xmlns:f="http://www.composite.net/ns/function/1.0" name="Composite.Widgets.String.TextBox" />" />
+      <FormRenderingProfile label="Key" helpText="" widgetFunctionMarkup="&lt;f:widgetfunction xmlns:f=&quot;http://www.composite.net/ns/function/1.0&quot; name=&quot;Composite.Widgets.String.TextBox&quot; /&gt;" />
     </DataFieldDescriptor>
     <DataFieldDescriptor id="89265a1c-8df5-40f4-92d6-6d45b8d46cbf" name="Value" isNullable="true" position="1" groupByPriority="0" inherited="false" instanceType="System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" storeType="PhysicalStoreType='LargeString'" isReadOnly="false">
-      <FormRenderingProfile label="Value" helpText="" widgetFunctionMarkup="<f:widgetfunction xmlns:f="http://www.composite.net/ns/function/1.0" name="Composite.Widgets.String.TextBox" />" />
+      <FormRenderingProfile label="Value" helpText="" widgetFunctionMarkup="&lt;f:widgetfunction xmlns:f=&quot;http://www.composite.net/ns/function/1.0&quot; name=&quot;Composite.Widgets.String.TextBox&quot; /&gt;" />
     </DataFieldDescriptor>
     <DataFieldDescriptor id="eb6056c1-87d0-494e-8545-e19fc0659bc7" name="RefParentId" isNullable="true" position="2" groupByPriority="1" inherited="false" instanceType="System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" storeType="PhysicalStoreType='String'Length='22'" isReadOnly="false" foreignKeyReferenceTypeName="AuthKit.KeyTreeStore.Data.KeyTreeItem">
-      <FormRenderingProfile label="RefParentId" helpText="" widgetFunctionMarkup="<f:widgetfunction xmlns:f="http://www.composite.net/ns/function/1.0" name="Composite.Widgets.DataReference.AuthKitKeyTreeStoreDataKeyTreeItem.OptionalSelector" />" />
+      <FormRenderingProfile label="RefParentId" helpText="" widgetFunctionMarkup="&lt;f:widgetfunction xmlns:f=&quot;http://www.composite.net/ns/function/1.0&quot; name=&quot;Composite.Widgets.DataReference.AuthKitKeyTreeStoreDataKeyTreeItem.OptionalSelector&quot; /&gt;" />
     </DataFieldDescriptor>
   </Fields>
 </DataTypeDescriptor>

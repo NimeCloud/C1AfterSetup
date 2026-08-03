@@ -89,6 +89,7 @@ namespace C1AfterSetup
                 new PreflightStep(),
                 new DeployDependenciesStep(),
                 new DeployDataTypesStep(),
+                new DeployPackageStep(),
                 new DeployAppCodeStep(),
                 new DeployPageTemplatesStep(),
                 new DeployRazorStep(),

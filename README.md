@@ -53,14 +53,21 @@ The pipeline is defined in [`Program.cs`](C1AfterSetup/Program.cs) and each phas
 
 1. **Preflight** — validates the site, probes online mode, takes a backup (first run or `-force` only).
 2. **Dependencies** — copies `sources/bin` + `sources/overrides` to `~/bin`.
-3. **Data types** — deploys `DataMetaData` XMLs parent-first (grouped A→C), regenerating `Composite.Generated.dll` in online mode.
-4. **App_Code** — AuthKit + KeyTreeStore + helper modules to `~/App_Code`.
+3. **Data types** — deploys `DataMetaData` XMLs parent-first, and builds a C1 package (`.c1pac`) into `~/App_Data/Composite/AutoInstallPackages` that triggers C1 to generate `Composite.Generated.dll`.
+4. **App_Code** — AuthKit + KeyTreeStore + startup sync (initializes permission keys, KeyTreeStore `Root`, and DB↔C# records on first load) to `~/App_Code`.
 5. **Page templates** — deploys templates master-first per manifest `order`.
 6. **Razor** — deploys Razor functions to `~/App_Data/Razor`.
-7. **Web.config** — applies `removeServerHeader`, `customHeaders clear/remove`, module registration (only if not already present).
+7. **Web.config** — applies `removeServerHeader`, `customHeaders clear/remove`, module registration, and required assembly references (`System.Net.Http`, `System.Web.Extensions`).
 8. **Verify** — reports every deployed file and the `Web.config` state.
 
 Everything to deploy lives in `C1AfterSetup/sources/`, and what maps where is described in `Config/setup.manifest.json`.
+
+### Data types & `Composite.Generated.dll`
+
+C1 CMS generates its C# data classes (`Composite.Generated.dll`) only during **first-time setup** or when a **data-type package is installed** — not from manually dropped `DataMetaData` XMLs on an already-initialized site. C1AfterSetup therefore packages the data types into a `.c1pac`:
+
+- **Fresh site** (never started): the package is placed in `~/App_Data/Composite/AutoInstallPackages` and C1 installs it on first startup — zero manual steps.
+- **Already-initialized site**: install the generated `.c1pac` once via **C1 Console → Packages → Install** (the only manual step; the script logs the exact file path).
 
 ## Resumability
 
