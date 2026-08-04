@@ -26,9 +26,18 @@ namespace C1AfterSetup
         public SetupManifest Manifest { get; private set; }
         public SetupState State { get; private set; }
         public bool Force { get; private set; }
+
+        /// <summary>
+        /// True ise hedef site "hiç başlatılmamış" (fresh) duruma getirilir:
+        /// C1'in runtime durumu (DataStores, Packages işaretleri, bayat Composite.Generated.dll vb.)
+        /// temizlenir, böylece ilk açılışta AutoInstallPackages işlenir ve
+        /// Composite.Generated.dll sıfırdan üretilir.
+        /// </summary>
+        public bool Fresh { get; private set; }
+
         public List<string> LogLines { get; private set; }
 
-        public SetupContext(string sitePath, RunMode mode, bool dryRun, string siteUrl, SetupManifest manifest, bool force)
+        public SetupContext(string sitePath, RunMode mode, bool dryRun, string siteUrl, SetupManifest manifest, bool force, bool fresh)
         {
             SitePath = Path.GetFullPath(sitePath);
             Mode = mode;
@@ -36,12 +45,39 @@ namespace C1AfterSetup
             SiteUrl = siteUrl;
             Manifest = manifest;
             Force = force;
+            Fresh = fresh;
             LogLines = new List<string>();
             SourcesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sources");
             BackupPath = dryRun
                 ? null
                 : Path.Combine(Path.GetDirectoryName(SitePath), "backups", DateTime.Now.ToString("yyyyMMdd-HHmmss"));
             State = SetupState.LoadOrCreate(SitePath);
+        }
+
+        /// <summary>
+        /// Hedef sitenin "hiç başlatılmamış" (fresh) olup olmadığını C1 runtime işaretlerine
+        /// bakarak belirler. Başlatılmış bir C1 sitesinde DataStores içinde veri dosyaları ve
+        /// Packages altında "installed" işaretleri bulunur; ikisi de yoksa site fresh'tir.
+        /// </summary>
+        public bool IsTargetFresh()
+        {
+            string dataStores = ResolveSite(Path.Combine("App_Data", "Composite", "DataStores"));
+            if (Directory.Exists(dataStores) &&
+                Directory.GetFiles(dataStores, "*.xml", SearchOption.TopDirectoryOnly).Length > 0)
+            {
+                return false;
+            }
+
+            string packages = ResolveSite(Path.Combine("App_Data", "Composite", "Packages"));
+            if (Directory.Exists(packages))
+            {
+                foreach (string dir in Directory.GetDirectories(packages))
+                {
+                    if (File.Exists(Path.Combine(dir, "installed"))) return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>Bu site için state dosyası hiç oluşturulmamış mı? (İlk çalışma mı?)</summary>

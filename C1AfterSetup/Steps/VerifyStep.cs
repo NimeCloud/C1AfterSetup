@@ -71,7 +71,7 @@ namespace C1AfterSetup.Steps
                 }
             }
 
-            // DataMetaData (kaynakta eşleşen her dosya, içerik eşitliği)
+            // DataMetaData (kaynakta eşleşen her dosya, içerik eşitliği) — PendingDataTypes'a konuşlandırılır
             string srcDataMeta = context.ResolveSource("DataMetaData");
             if (Directory.Exists(srcDataMeta))
             {
@@ -79,7 +79,7 @@ namespace C1AfterSetup.Steps
                 {
                     foreach (string src in Directory.GetFiles(srcDataMeta, Path.GetFileName(t.File), SearchOption.TopDirectoryOnly))
                     {
-                        string dst = context.ResolveSite(Path.Combine("App_Data", "Composite", "DataMetaData", Path.GetFileName(src)));
+                        string dst = context.ResolveSite(Path.Combine("App_Data", "Composite", "PendingDataTypes", Path.GetFileName(src)));
                         if (File.Exists(dst) && FileSyncUtil.FilesEqual(src, dst)) ok++;
                         else { context.Error("  EKSİK/ESKİ DataMetaData: " + Path.GetFileName(src)); missing++; }
                     }

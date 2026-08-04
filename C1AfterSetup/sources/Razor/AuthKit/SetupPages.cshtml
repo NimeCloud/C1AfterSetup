@@ -233,11 +233,11 @@ MenuTitle: "Kullanıcı Yetkileri"),
 
             // Login sayfa GUID'lerini Settings'e kaydet (kalici olsun)
             if (AuthKit.Authentication.AuthenticationManager.LoginPageId != Guid.Empty)
-                KeyTreeStore.KeyTreeStoreManager.Set("Auth.LoginPageId",
+                KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.LoginPageId",
 AuthKit.Authentication.AuthenticationManager.LoginPageId.ToString());
 
             if (AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId != Guid.Empty)
-                KeyTreeStore.KeyTreeStoreManager.Set("Auth.ResetPasswordPageId",
+                KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.ResetPasswordPageId",
 AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
         }
 

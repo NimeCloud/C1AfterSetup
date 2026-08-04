@@ -97,10 +97,10 @@ MenuTitle: "Kullanici Yetkileri"),
             try
             {
                 if (AuthKit.Authentication.AuthenticationManager.LoginPageId != Guid.Empty)
-                    KeyTreeStore.KeyTreeStoreManager.Set("Auth.LoginPageId",
+                    KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.LoginPageId",
 AuthKit.Authentication.AuthenticationManager.LoginPageId.ToString());
                 if (AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId != Guid.Empty)
-                    KeyTreeStore.KeyTreeStoreManager.Set("Auth.ResetPasswordPageId",
+                    KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.ResetPasswordPageId",
 AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
             }
             catch { }
@@ -143,8 +143,8 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
         {
             var googleClientId = (Request["googleClientId"] ?? "").Trim();
             var facebookAppId = (Request["facebookAppId"] ?? "").Trim();
-            KeyTreeStore.KeyTreeStoreManager.Set("Auth.OAuth.Google.ClientId", googleClientId);
-            KeyTreeStore.KeyTreeStoreManager.Set("Auth.OAuth.Facebook.AppId", facebookAppId);
+            KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.OAuth.Google.ClientId", googleClientId);
+            KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.OAuth.Facebook.AppId", facebookAppId);
             saveOAuthMessage = "OAuth ayarlari basariyla kaydedildi.";
         }
         catch (Exception ex)

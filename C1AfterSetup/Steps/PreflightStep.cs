@@ -35,6 +35,21 @@ namespace C1AfterSetup.Steps
                 return false;
             }
 
+            // Hedef zaten başlatılmışsa (DataStores/Packages mevcut) ve -fresh VERİLMEMİŞSE:
+            // bayat Composite.Generated.dll nedeniyle App_Code derlenemeyebilir, AMA
+            // CompileGeneratedTypesStep (derleme adımı) siteyi bir kere başlatıp tipleri
+            // DynamicTypeManager ile kaydeder ve DLL'i üretir. Mevcut site içeriği KORUNUR.
+            // Yalnızca BİLGİ; hata değil.
+            if (context.Manifest.DataTypes.Count > 0 &&
+                context.Mode == RunMode.Offline &&
+                !context.Fresh &&
+                !context.IsTargetFresh())
+            {
+                context.Log("BİLGİ: Hedef site zaten başlatılmış (mevcut içerik, admin, sayfalar korunur).");
+                context.Log("  Veri tipleri, derleme adımı ile eklenecek (IIS Express headless başlatma).");
+                context.Log("  Bayat Composite.Generated.dll, derleme adımı tarafından yeniden üretilir.");
+            }
+
             // Online modda site erişilebilir olmalı
             if (context.Mode == RunMode.Online)
             {

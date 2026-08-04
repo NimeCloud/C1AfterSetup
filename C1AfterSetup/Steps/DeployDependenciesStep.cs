@@ -43,6 +43,14 @@ namespace C1AfterSetup.Steps
                 }
             }
 
+            // sources/generated: yakalanmış (tipleri içeren) Composite.Generated.dll varsa hedefte olmalı
+            string generatedSrc = context.ResolveSource(Path.Combine("generated", "Composite.Generated.dll"));
+            if (File.Exists(generatedSrc))
+            {
+                string generatedDst = Path.Combine(targetBin, "Composite.Generated.dll");
+                if (!File.Exists(generatedDst) || !FileSyncUtil.FilesEqual(generatedSrc, generatedDst)) return false;
+            }
+
             return true;
         }
 
@@ -115,6 +123,27 @@ namespace C1AfterSetup.Steps
             else
             {
                 context.Log("  sources/overrides boş - atlandı.");
+            }
+
+            // 3) sources/generated: yakalanmış (tipleri içeren) Composite.Generated.dll varsa ~/bin'e kopyala.
+            //    Böylece App_Code, derleme anında tipleri bulur (ASP.NET, C1 Application_Start'tan ÖNCE App_Code derler).
+            string generatedSrc = context.ResolveSource(Path.Combine("generated", "Composite.Generated.dll"));
+            if (File.Exists(generatedSrc))
+            {
+                string generatedDst = Path.Combine(targetBin, "Composite.Generated.dll");
+                if (FileSyncUtil.CopyIfDifferent(generatedSrc, generatedDst))
+                {
+                    updated++;
+                    context.Log("  (generated) + Composite.Generated.dll -> ~/bin/Composite.Generated.dll (güncellendi)");
+                }
+                else
+                {
+                    context.Log("  (generated) = Composite.Generated.dll zaten güncel");
+                }
+            }
+            else
+            {
+                context.Log("  sources/generated yok - Composite.Generated.dll şip edilmedi (ilk açılışta C1 üretir).");
             }
 
             if (updated == 0) context.Log("  Tüm bağımlılıklar zaten güncel.");

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<DataTypeDescriptor dataTypeId="7e43385d-2a82-4221-867e-dddcaeb3f883" name="KeyTreeItem" namespace="AuthKit.KeyTreeStore.Data" title="AuthKit.KeyTreeStore.Data.KeyTreeItem" isCodeGenerated="true" cachable="false" searchable="false" labelFieldName="Key" typeManagerTypeName="AuthKit.KeyTreeStore.Data.KeyTreeItem">
+<DataTypeDescriptor dataTypeId="7e43385d-2a82-4221-867e-dddcaeb3f883" name="KeyTreeItem" namespace="KeyTreeStoreKit.Data" title="KeyTreeStoreKit.Data.KeyTreeItem" isCodeGenerated="true" cachable="false" searchable="false" labelFieldName="Key" typeManagerTypeName="KeyTreeStoreKit.Data.KeyTreeItem">
   <DataAssociations />
   <DataScopes>
     <DataScopeIdentifier name="public" />

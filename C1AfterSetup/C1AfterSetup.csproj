@@ -54,6 +54,9 @@
     <Compile Include="FileSyncUtil.cs" />
     <Compile Include="Steps\ISetupStep.cs" />
     <Compile Include="Steps\PreflightStep.cs" />
+    <Compile Include="Steps\PrepareFreshStep.cs" />
+    <Compile Include="Steps\CompileGeneratedTypesStep.cs" />
+    <Compile Include="Steps\VerifyGeneratedTypesStep.cs" />
     <Compile Include="Steps\DeployDependenciesStep.cs" />
     <Compile Include="Steps\DeployDataTypesStep.cs" />
     <Compile Include="Steps\DeployPackageStep.cs" />

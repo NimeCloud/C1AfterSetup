@@ -1,29 +1,29 @@
-using Composite.Data;
+﻿using Composite.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace KeyTreeStore
+namespace KeyTreeStoreKit
 {
     /// <summary>
-    /// Hiyerarşik key/value store (AuthKit.KeyTreeStore.Data.KeyTreeItem tablosu).
+    /// HiyerarÅŸik key/value store (KeyTreeStoreKit.Data.KeyTreeItem tablosu).
     ///
-    /// Path tabanlı çalışır; ayraç "/" tir. Hibrit grup/key erişimi desteklenir:
-    ///   "Root/SMTP Settings/Password"  -> açık Root
-    ///   "/SMTP Settings/Password"      -> baştaki / Root anlamına gelir (otomatik temizlenir)
-    ///   "SMTP Settings/Password"       -> Root yazılmadan da çalışır
+    /// Path tabanlÄ± Ã§alÄ±ÅŸÄ±r; ayraÃ§ "/" tir. Hibrit grup/key eriÅŸimi desteklenir:
+    ///   "Root/SMTP Settings/Password"  -> aÃ§Ä±k Root
+    ///   "/SMTP Settings/Password"      -> baÅŸtaki / Root anlamÄ±na gelir (otomatik temizlenir)
+    ///   "SMTP Settings/Password"       -> Root yazÄ±lmadan da Ã§alÄ±ÅŸÄ±r
     ///
-    /// Root Sentinel (top-level, Key = "Root") VARSA tüm çözümleme onun altından yapılır;
-    /// YOKSA çözümleme top-level'den (RefParentId == null) yapılır. Böylece Root'lu ve
-    /// Root'suz yapı birlikte desteklenir; kullanıcı C1'den elle parent item ekleyebilir.
+    /// Root Sentinel (top-level, Key = "Root") VARSA tÃ¼m Ã§Ã¶zÃ¼mleme onun altÄ±ndan yapÄ±lÄ±r;
+    /// YOKSA Ã§Ã¶zÃ¼mleme top-level'den (RefParentId == null) yapÄ±lÄ±r. BÃ¶ylece Root'lu ve
+    /// Root'suz yapÄ± birlikte desteklenir; kullanÄ±cÄ± C1'den elle parent item ekleyebilir.
     /// </summary>
     public static class KeyTreeStoreManager
     {
 
-        #region --- Yardımcı Metotlar ---
+        #region --- YardÄ±mcÄ± Metotlar ---
 
         /// <summary>
-        /// Yolu normalize eder: kenardaki "/" ve boş segmentleri temizler.
+        /// Yolu normalize eder: kenardaki "/" ve boÅŸ segmentleri temizler.
         /// "/SMTP Settings/Password" -> ["SMTP Settings", "Password"].
         /// </summary>
         private static string[] NormalizePath(string path)
@@ -32,21 +32,21 @@ namespace KeyTreeStore
         }
 
         /// <summary>
-        /// Varsa Root Sentinel'in Id'sini döndürür (top-level, Key = "Root", harf duyarsız).
-        /// Yoksa null döner -> çözümleme top-level'den (RefParentId == null) yapılır.
+        /// Varsa Root Sentinel'in Id'sini dÃ¶ndÃ¼rÃ¼r (top-level, Key = "Root", harf duyarsÄ±z).
+        /// Yoksa null dÃ¶ner -> Ã§Ã¶zÃ¼mleme top-level'den (RefParentId == null) yapÄ±lÄ±r.
         /// </summary>
         private static string ResolveRootId(DataConnection connection)
         {
-            var root = connection.Get<AuthKit.KeyTreeStore.Data.KeyTreeItem>()
+            var root = connection.Get<KeyTreeStoreKit.Data.KeyTreeItem>()
                 .FirstOrDefault(s => s.RefParentId == null && string.Equals(s.Key, "Root", StringComparison.OrdinalIgnoreCase));
             return root != null ? root.Id : null;
         }
 
         /// <summary>
-        /// Yolun SON segmenti hariç tüm segmentleri çözer ve son segmentin parentId'sini döndürür.
-        /// - Root Sentinel varsa ve yol "Root/..." ile başlıyorsa ilk segment (Root) atlanır;
-        ///   sentinel yoksa "Root" top-level bir grup olarak oluşturulur (Root'lu yapı isteğe bağlı kurulur).
-        /// - createMissing=true ise eksik ara düğümler oluşturulur; false ise yol yoksa false döner.
+        /// Yolun SON segmenti hariÃ§ tÃ¼m segmentleri Ã§Ã¶zer ve son segmentin parentId'sini dÃ¶ndÃ¼rÃ¼r.
+        /// - Root Sentinel varsa ve yol "Root/..." ile baÅŸlÄ±yorsa ilk segment (Root) atlanÄ±r;
+        ///   sentinel yoksa "Root" top-level bir grup olarak oluÅŸturulur (Root'lu yapÄ± isteÄŸe baÄŸlÄ± kurulur).
+        /// - createMissing=true ise eksik ara dÃ¼ÄŸÃ¼mler oluÅŸturulur; false ise yol yoksa false dÃ¶ner.
         /// </summary>
         private static bool ResolvePathParent(DataConnection connection, string[] pathParts, bool createMissing, out string parentId)
         {
@@ -56,19 +56,20 @@ namespace KeyTreeStore
             if (parentId != null && pathParts.Length > 0 &&
                 string.Equals(pathParts[0], "Root", StringComparison.OrdinalIgnoreCase))
             {
-                startIndex = 1; // sentinel zaten Root; açık "Root" segmentini atla
+                startIndex = 1; // sentinel zaten Root; aÃ§Ä±k "Root" segmentini atla
             }
 
             for (int i = startIndex; i < pathParts.Length - 1; i++)
             {
-                var item = connection.Get<AuthKit.KeyTreeStore.Data.KeyTreeItem>()
-                    .FirstOrDefault(s => s.RefParentId == parentId && s.Key == pathParts[i]);
+                string currentParentId = parentId; // out parametre lambda iÃ§inde kullanÄ±lamaz; yerel kopyaya al
+                var item = connection.Get<KeyTreeStoreKit.Data.KeyTreeItem>()
+                    .FirstOrDefault(s => s.RefParentId == currentParentId && s.Key == pathParts[i]);
                 if (item == null)
                 {
                     if (!createMissing) return false; // yol yok
-                    item = DataFacade.BuildNew<AuthKit.KeyTreeStore.Data.KeyTreeItem>();
+                    item = DataFacade.BuildNew<KeyTreeStoreKit.Data.KeyTreeItem>();
                     item.Key = pathParts[i];
-                    item.Value = string.Empty; // ara düğümler gruptur; değeri olmaz
+                    item.Value = string.Empty; // ara dÃ¼ÄŸÃ¼mler gruptur; deÄŸeri olmaz
                     item.RefParentId = parentId;
                     item = DataFacade.AddNew(item);
                 }
@@ -78,29 +79,29 @@ namespace KeyTreeStore
         }
 
         /// <summary>
-        /// Root sentinel'in (top-level, Key = "Root") var olduğundan emin olur; yoksa oluşturur.
-        /// C1 Data sekmesinde tüm parent/child'lar tek kök altında toplansın diye başlangıçta çağrılır.
+        /// Root sentinel'in (top-level, Key = "Root") var olduÄŸundan emin olur; yoksa oluÅŸturur.
+        /// C1 Data sekmesinde tÃ¼m parent/child'lar tek kÃ¶k altÄ±nda toplansÄ±n diye baÅŸlangÄ±Ã§ta Ã§aÄŸrÄ±lÄ±r.
         /// </summary>
         public static void EnsureRoot()
         {
             using (var connection = new DataConnection())
             {
                 if (ResolveRootId(connection) != null) return;
-                var root = DataFacade.BuildNew<AuthKit.KeyTreeStore.Data.KeyTreeItem>();
+                var root = DataFacade.BuildNew<KeyTreeStoreKit.Data.KeyTreeItem>();
                 root.Key = "Root";
-                root.Value = string.Empty; // root değeri olmaz
+                root.Value = string.Empty; // root deÄŸeri olmaz
                 root.RefParentId = null;
                 DataFacade.AddNew(root);
             }
         }
 
-        #endregion --- Yardımcı Metotlar ---
+        #endregion --- YardÄ±mcÄ± Metotlar ---
 
         #region --- Ayar Okuma (Read) ---
 
         /// <summary>
-        /// Belirtilen yoldaki TEK bir ayarın değerini getirir.
-        /// Eğer aynı yolda birden fazla ayar varsa, sadece ilk bulduğunu döndürür.
+        /// Belirtilen yoldaki TEK bir ayarÄ±n deÄŸerini getirir.
+        /// EÄŸer aynÄ± yolda birden fazla ayar varsa, sadece ilk bulduÄŸunu dÃ¶ndÃ¼rÃ¼r.
         /// </summary>
         public static T GetValue<T>(string path, T defaultValue = default(T))
         {
@@ -114,9 +115,9 @@ namespace KeyTreeStore
                 string parentId;
                 if (!ResolvePathParent(connection, pathParts, false, out parentId)) return defaultValue;
 
-                // Son segmenti (asıl anahtarı) kullanarak ayarı bul.
+                // Son segmenti (asÄ±l anahtarÄ±) kullanarak ayarÄ± bul.
                 string key = pathParts[pathParts.Length - 1];
-                var item = connection.Get<AuthKit.KeyTreeStore.Data.KeyTreeItem>().FirstOrDefault(s => s.RefParentId == parentId && s.Key == key);
+                var item = connection.Get<KeyTreeStoreKit.Data.KeyTreeItem>().FirstOrDefault(s => s.RefParentId == parentId && s.Key == key);
 
                 if (item != null && !string.IsNullOrEmpty(item.Value))
                 {
@@ -134,8 +135,8 @@ namespace KeyTreeStore
         }
 
         /// <summary>
-        /// Belirtilen yoldaki TÜM ayarların değerlerini bir liste olarak getirir.
-        /// Bu metot, aynı anahtar altında birden fazla değer saklamak için kullanılır.
+        /// Belirtilen yoldaki TÃœM ayarlarÄ±n deÄŸerlerini bir liste olarak getirir.
+        /// Bu metot, aynÄ± anahtar altÄ±nda birden fazla deÄŸer saklamak iÃ§in kullanÄ±lÄ±r.
         /// </summary>
         public static List<T> GetValues<T>(string path)
         {
@@ -150,9 +151,9 @@ namespace KeyTreeStore
                 string parentId;
                 if (!ResolvePathParent(connection, pathParts, false, out parentId)) return values;
 
-                // Son segmenti (asıl anahtarı) kullanarak TÜM eşleşen ayarları bul.
+                // Son segmenti (asÄ±l anahtarÄ±) kullanarak TÃœM eÅŸleÅŸen ayarlarÄ± bul.
                 string key = pathParts[pathParts.Length - 1];
-                var items = connection.Get<AuthKit.KeyTreeStore.Data.KeyTreeItem>().Where(s => s.RefParentId == parentId && s.Key == key).ToList();
+                var items = connection.Get<KeyTreeStoreKit.Data.KeyTreeItem>().Where(s => s.RefParentId == parentId && s.Key == key).ToList();
 
                 foreach (var item in items)
                 {
@@ -164,7 +165,7 @@ namespace KeyTreeStore
                         }
                         catch
                         {
-                            // Tip dönüşümü başarısız olanları atla
+                            // Tip dÃ¶nÃ¼ÅŸÃ¼mÃ¼ baÅŸarÄ±sÄ±z olanlarÄ± atla
                         }
                     }
                 }
@@ -174,11 +175,11 @@ namespace KeyTreeStore
 
 
         /// <summary>
-        /// Belirtilen bir düğümün (grup/key) ALTINDAKİ tüm ayarların anahtar-değer çiftlerini getirir.
-        /// Otomatik temizlik gibi işlemler için kullanılır.
+        /// Belirtilen bir dÃ¼ÄŸÃ¼mÃ¼n (grup/key) ALTINDAKÄ° tÃ¼m ayarlarÄ±n anahtar-deÄŸer Ã§iftlerini getirir.
+        /// Otomatik temizlik gibi iÅŸlemler iÃ§in kullanÄ±lÄ±r.
         /// </summary>
-        /// <param name="path">Ayarların hiyerarşik yolu.</param>
-        /// <returns>Anahtar ve Değer içeren bir KeyValuePair listesi.</returns>
+        /// <param name="path">AyarlarÄ±n hiyerarÅŸik yolu.</param>
+        /// <returns>Anahtar ve DeÄŸer iÃ§eren bir KeyValuePair listesi.</returns>
         public static List<KeyValuePair<string, string>> GetKeyValuePairsByPath(string path)
         {
             var pairs = new List<KeyValuePair<string, string>>();
@@ -189,16 +190,16 @@ namespace KeyTreeStore
 
             using (var connection = new DataConnection())
             {
-                // Yolun son segmentine kadar çöz, sonra o düğümü bul.
+                // Yolun son segmentine kadar Ã§Ã¶z, sonra o dÃ¼ÄŸÃ¼mÃ¼ bul.
                 string parentId;
                 if (!ResolvePathParent(connection, pathParts, false, out parentId)) return pairs;
 
                 string key = pathParts[pathParts.Length - 1];
-                var node = connection.Get<AuthKit.KeyTreeStore.Data.KeyTreeItem>().FirstOrDefault(s => s.RefParentId == parentId && s.Key == key);
+                var node = connection.Get<KeyTreeStoreKit.Data.KeyTreeItem>().FirstOrDefault(s => s.RefParentId == parentId && s.Key == key);
                 if (node == null) return pairs;
 
-                // O düğümün altındaki tüm çocukları al ve listeye ekle.
-                var children = connection.Get<AuthKit.KeyTreeStore.Data.KeyTreeItem>().Where(s => s.RefParentId == node.Id).ToList();
+                // O dÃ¼ÄŸÃ¼mÃ¼n altÄ±ndaki tÃ¼m Ã§ocuklarÄ± al ve listeye ekle.
+                var children = connection.Get<KeyTreeStoreKit.Data.KeyTreeItem>().Where(s => s.RefParentId == node.Id).ToList();
                 foreach (var child in children)
                 {
                     pairs.Add(new KeyValuePair<string, string>(child.Key, child.Value));
@@ -209,30 +210,30 @@ namespace KeyTreeStore
 
         #endregion --- Ayar Okuma (Read) ---
 
-        #region --- Ayar Ekleme ve Güncelleme (Create & Update) ---
+        #region --- Ayar Ekleme ve GÃ¼ncelleme (Create & Update) ---
 
         /// <summary>
-        /// Belirtilen yola YENİ bir ayar ekler.
-        /// Bu metot, aynı anahtar altında mükerrer kayıtlara izin verir.
+        /// Belirtilen yola YENÄ° bir ayar ekler.
+        /// Bu metot, aynÄ± anahtar altÄ±nda mÃ¼kerrer kayÄ±tlara izin verir.
         /// </summary>
         public static void AddValue(string path, object value)
         {
             if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("Ayar yolu boş olamaz.", nameof(path));
+                throw new ArgumentException("Ayar yolu boÅŸ olamaz.", nameof(path));
 
             var pathParts = NormalizePath(path);
             if (pathParts.Length == 0)
-                throw new ArgumentException("Ayar yolu boş olamaz.", nameof(path));
+                throw new ArgumentException("Ayar yolu boÅŸ olamaz.", nameof(path));
 
             using (var connection = new DataConnection())
             {
-                // Yolun son parçası hariç tüm klasör/grup yapısını bul veya oluştur.
+                // Yolun son parÃ§asÄ± hariÃ§ tÃ¼m klasÃ¶r/grup yapÄ±sÄ±nÄ± bul veya oluÅŸtur.
                 string parentId;
                 ResolvePathParent(connection, pathParts, true, out parentId);
 
-                // Her zaman yeni bir ayar oluştur.
+                // Her zaman yeni bir ayar oluÅŸtur.
                 string key = pathParts[pathParts.Length - 1];
-                var newItem = DataFacade.BuildNew<AuthKit.KeyTreeStore.Data.KeyTreeItem>();
+                var newItem = DataFacade.BuildNew<KeyTreeStoreKit.Data.KeyTreeItem>();
                 //newItem.Id = Guid.NewGuid();
                 newItem.Key = key;
                 newItem.Value = value?.ToString() ?? string.Empty;
@@ -242,37 +243,37 @@ namespace KeyTreeStore
         }
 
         /// <summary>
-        /// Belirtilen yoldaki bir ayarı günceller veya yoksa oluşturur (UPSERT).
-        /// Eğer aynı yolda birden fazla ayar varsa, sadece ilk bulduğunu günceller.
+        /// Belirtilen yoldaki bir ayarÄ± gÃ¼nceller veya yoksa oluÅŸturur (UPSERT).
+        /// EÄŸer aynÄ± yolda birden fazla ayar varsa, sadece ilk bulduÄŸunu gÃ¼nceller.
         /// </summary>
         public static void SetValue(string path, object value)
         {
             if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("Ayar yolu boş olamaz.", nameof(path));
+                throw new ArgumentException("Ayar yolu boÅŸ olamaz.", nameof(path));
 
             var pathParts = NormalizePath(path);
             if (pathParts.Length == 0)
-                throw new ArgumentException("Ayar yolu boş olamaz.", nameof(path));
+                throw new ArgumentException("Ayar yolu boÅŸ olamaz.", nameof(path));
 
             using (var connection = new DataConnection())
             {
-                // Yolun son parçası hariç tüm klasör/grup yapısını bul veya oluştur.
+                // Yolun son parÃ§asÄ± hariÃ§ tÃ¼m klasÃ¶r/grup yapÄ±sÄ±nÄ± bul veya oluÅŸtur.
                 string parentId;
                 ResolvePathParent(connection, pathParts, true, out parentId);
 
                 string key = pathParts[pathParts.Length - 1];
-                var existing = connection.Get<AuthKit.KeyTreeStore.Data.KeyTreeItem>().FirstOrDefault(s => s.RefParentId == parentId && s.Key == key);
+                var existing = connection.Get<KeyTreeStoreKit.Data.KeyTreeItem>().FirstOrDefault(s => s.RefParentId == parentId && s.Key == key);
 
                 if (existing != null)
                 {
-                    // Ayar var, güncelle.
+                    // Ayar var, gÃ¼ncelle.
                     existing.Value = value?.ToString() ?? string.Empty;
                     DataFacade.Update(existing);
                 }
                 else
                 {
-                    // Ayar yok, oluştur.
-                    var newItem = DataFacade.BuildNew<AuthKit.KeyTreeStore.Data.KeyTreeItem>();
+                    // Ayar yok, oluÅŸtur.
+                    var newItem = DataFacade.BuildNew<KeyTreeStoreKit.Data.KeyTreeItem>();
                     //newItem.Id = Guid.NewGuid();
                     newItem.Key = key;
                     newItem.Value = value?.ToString() ?? string.Empty;
@@ -283,54 +284,54 @@ namespace KeyTreeStore
         }
 
         /// <summary>
-        /// Belirtilen yoldaki TÜM mevcut ayarları siler ve yerine verilen YENİ değerleri ekler.
-        /// Bir anahtar altındaki listeyi komple yeniden yazmak için kullanılır.
+        /// Belirtilen yoldaki TÃœM mevcut ayarlarÄ± siler ve yerine verilen YENÄ° deÄŸerleri ekler.
+        /// Bir anahtar altÄ±ndaki listeyi komple yeniden yazmak iÃ§in kullanÄ±lÄ±r.
         /// </summary>
-        /// <param name="path">Ayarların hiyerarşik yolu. Örnek: "Guvenlik/IzinVerilenIPler"</param>
-        /// <param name="newValues">Eklenecek yeni değerlerin listesi.</param>
+        /// <param name="path">AyarlarÄ±n hiyerarÅŸik yolu. Ã–rnek: "Guvenlik/IzinVerilenIPler"</param>
+        /// <param name="newValues">Eklenecek yeni deÄŸerlerin listesi.</param>
         /// <example>
-        /// Bu metot, bir anahtar altındaki tüm eski değerleri silip yenileriyle değiştirmek için kullanılır.
+        /// Bu metot, bir anahtar altÄ±ndaki tÃ¼m eski deÄŸerleri silip yenileriyle deÄŸiÅŸtirmek iÃ§in kullanÄ±lÄ±r.
         /// <code>
-        /// // Örnek: "IzinVerilenIPler" listesini temizleyip sadece iki yeni IP adresi eklemek.
+        /// // Ã–rnek: "IzinVerilenIPler" listesini temizleyip sadece iki yeni IP adresi eklemek.
         ///
-        /// // Yeni IP listemizi hazırlıyoruz.
+        /// // Yeni IP listemizi hazÄ±rlÄ±yoruz.
         /// var yeniIpListesi = new List<string> { "1.1.1.1", "2.2.2.2" };
         ///
-        /// // ReplaceAllValues metodunu çağırıyoruz.
+        /// // ReplaceAllValues metodunu Ã§aÄŸÄ±rÄ±yoruz.
         /// KeyTreeStoreManager.ReplaceAllValues("Guvenlik/IzinVerilenIPler", yeniIpListesi);
         ///
-        /// // Bu işlemden sonra "Guvenlik/IzinVerilenIPler" altında sadece "1.1.1.1" ve "2.2.2.2" kalacaktır.
-        /// // Eski IP'lerin hepsi silinmiş olur.
+        /// // Bu iÅŸlemden sonra "Guvenlik/IzinVerilenIPler" altÄ±nda sadece "1.1.1.1" ve "2.2.2.2" kalacaktÄ±r.
+        /// // Eski IP'lerin hepsi silinmiÅŸ olur.
         /// </code>
         /// </example>
         public static void ReplaceAllValues(string path, IEnumerable<object> newValues)
         {
             if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("Ayar yolu boş olamaz.", nameof(path));
+                throw new ArgumentException("Ayar yolu boÅŸ olamaz.", nameof(path));
 
             var pathParts = NormalizePath(path);
             if (pathParts.Length == 0)
-                throw new ArgumentException("Ayar yolu boş olamaz.", nameof(path));
+                throw new ArgumentException("Ayar yolu boÅŸ olamaz.", nameof(path));
 
             using (var connection = new DataConnection())
             {
-                // 1. Adım: Yolun son segmentine kadar çöz (yoksa yapılacak bir şey yok).
+                // 1. AdÄ±m: Yolun son segmentine kadar Ã§Ã¶z (yoksa yapÄ±lacak bir ÅŸey yok).
                 string parentId;
                 if (!ResolvePathParent(connection, pathParts, false, out parentId)) return;
 
                 string key = pathParts[pathParts.Length - 1];
-                var oldItems = connection.Get<AuthKit.KeyTreeStore.Data.KeyTreeItem>().Where(s => s.RefParentId == parentId && s.Key == key).ToList();
+                var oldItems = connection.Get<KeyTreeStoreKit.Data.KeyTreeItem>().Where(s => s.RefParentId == parentId && s.Key == key).ToList();
 
-                // 2. Adım: Bulunan TÜM eski ayarları sil.
+                // 2. AdÄ±m: Bulunan TÃœM eski ayarlarÄ± sil.
                 foreach (var oldItem in oldItems)
                 {
                     connection.Delete(oldItem);
                 }
 
-                // 3. Adım: Verilen YENİ değerleri listeye tek tek ekle.
+                // 3. AdÄ±m: Verilen YENÄ° deÄŸerleri listeye tek tek ekle.
                 foreach (var newValue in newValues)
                 {
-                    var newItem = DataFacade.BuildNew<AuthKit.KeyTreeStore.Data.KeyTreeItem>();
+                    var newItem = DataFacade.BuildNew<KeyTreeStoreKit.Data.KeyTreeItem>();
                     //newItem.Id = Guid.NewGuid();
                     newItem.Key = key;
                     newItem.Value = newValue?.ToString() ?? string.Empty;
@@ -345,13 +346,13 @@ namespace KeyTreeStore
         #region --- Ayar Silme (Delete) ---
 
         /// <summary>
-        /// Belirtilen yoldaki ve değere sahip TEK bir ayarı siler.
+        /// Belirtilen yoldaki ve deÄŸere sahip TEK bir ayarÄ± siler.
         /// </summary>
         public static void DeleteValue(string path, object valueToDelete)
         {
             if (string.IsNullOrWhiteSpace(path) || valueToDelete == null) return;
 
-            List<AuthKit.KeyTreeStore.Data.KeyTreeItem> items = GetItemsByPath(path);
+            List<KeyTreeStoreKit.Data.KeyTreeItem> items = GetItemsByPath(path);
             string valueStr = valueToDelete.ToString();
 
             var itemToDelete = items.FirstOrDefault(s => s.Value == valueStr);
@@ -363,11 +364,11 @@ namespace KeyTreeStore
         }
 
         /// <summary>
-        /// Belirtilen yoldaki TÜM ayarları siler.
+        /// Belirtilen yoldaki TÃœM ayarlarÄ± siler.
         /// </summary>
         public static void DeleteAllValues(string path)
         {
-            List<AuthKit.KeyTreeStore.Data.KeyTreeItem> items = GetItemsByPath(path);
+            List<KeyTreeStoreKit.Data.KeyTreeItem> items = GetItemsByPath(path);
 
             foreach (var item in items)
             {
@@ -376,31 +377,31 @@ namespace KeyTreeStore
         }
 
         /// <summary>
-        /// Belirtilen yoldaki tüm ayarları döndürür (silme işlemleri için yardımcı).
+        /// Belirtilen yoldaki tÃ¼m ayarlarÄ± dÃ¶ndÃ¼rÃ¼r (silme iÅŸlemleri iÃ§in yardÄ±mcÄ±).
         /// </summary>
-        private static List<AuthKit.KeyTreeStore.Data.KeyTreeItem> GetItemsByPath(string path)
+        private static List<KeyTreeStoreKit.Data.KeyTreeItem> GetItemsByPath(string path)
         {
             var pathParts = NormalizePath(path);
-            if (pathParts.Length == 0) return new List<AuthKit.KeyTreeStore.Data.KeyTreeItem>();
+            if (pathParts.Length == 0) return new List<KeyTreeStoreKit.Data.KeyTreeItem>();
 
             using (var connection = new DataConnection())
             {
                 string parentId;
-                if (!ResolvePathParent(connection, pathParts, false, out parentId)) return new List<AuthKit.KeyTreeStore.Data.KeyTreeItem>();
+                if (!ResolvePathParent(connection, pathParts, false, out parentId)) return new List<KeyTreeStoreKit.Data.KeyTreeItem>();
 
-                // Son anahtara uyan tüm ayarları bul ve döndür.
+                // Son anahtara uyan tÃ¼m ayarlarÄ± bul ve dÃ¶ndÃ¼r.
                 string key = pathParts[pathParts.Length - 1];
-                return connection.Get<AuthKit.KeyTreeStore.Data.KeyTreeItem>().Where(s => s.RefParentId == parentId && s.Key == key).ToList();
+                return connection.Get<KeyTreeStoreKit.Data.KeyTreeItem>().Where(s => s.RefParentId == parentId && s.Key == key).ToList();
             }
         }
 
         #endregion
 
-        #region --- Flat Key/Value Kolaylık (C1 Geneli) ---
+        #region --- Flat Key/Value KolaylÄ±k (C1 Geneli) ---
 
         /// <summary>
-        /// Key bazlı basit okuma (grupsuz). Bulunamazsa null döner.
-        /// Örnek: Get("Auth.LoginPageId")
+        /// Key bazlÄ± basit okuma (grupsuz). Bulunamazsa null dÃ¶ner.
+        /// Ã–rnek: Get("Auth.LoginPageId")
         /// </summary>
         public static string Get(string key)
         {
@@ -408,8 +409,8 @@ namespace KeyTreeStore
         }
 
         /// <summary>
-        /// Key bazlı basit okuma; bulunamazsa defaultValue döner.
-        /// Örnek: Get("Auth.LoginPageId", "")
+        /// Key bazlÄ± basit okuma; bulunamazsa defaultValue dÃ¶ner.
+        /// Ã–rnek: Get("Auth.LoginPageId", "")
         /// </summary>
         public static string Get(string key, string defaultValue)
         {
@@ -417,7 +418,7 @@ namespace KeyTreeStore
         }
 
         /// <summary>
-        /// Key bazlı basit yazma (UPSERT). Tek parçalı key'ler için ("Auth.LoginPageId").
+        /// Key bazlÄ± basit yazma (UPSERT). Tek parÃ§alÄ± key'ler iÃ§in ("Auth.LoginPageId").
         /// </summary>
         public static bool Set(string key, string value)
         {
@@ -433,7 +434,7 @@ namespace KeyTreeStore
         }
 
         /// <summary>
-        /// Key bazlı silme. Tek parçalı key'ler için ("Auth.LoginPageId").
+        /// Key bazlÄ± silme. Tek parÃ§alÄ± key'ler iÃ§in ("Auth.LoginPageId").
         /// </summary>
         public static bool Delete(string key)
         {
@@ -451,3 +452,5 @@ namespace KeyTreeStore
         #endregion
     }
 }
+
+

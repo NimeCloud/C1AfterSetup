@@ -598,7 +598,7 @@ namespace AuthKit.Authentication
         /// </summary>
         public static string GoogleClientId
         {
-            get { return KeyTreeStore.KeyTreeStoreManager.Get("Auth.OAuth.Google.ClientId", ""); }
+            get { return global::KeyTreeStoreKit.KeyTreeStoreManager.Get("Auth.OAuth.Google.ClientId", ""); }
         }
 
         /// <summary>
@@ -606,7 +606,7 @@ namespace AuthKit.Authentication
         /// </summary>
         public static string FacebookAppId
         {
-            get { return KeyTreeStore.KeyTreeStoreManager.Get("Auth.OAuth.Facebook.AppId", ""); }
+            get { return global::KeyTreeStoreKit.KeyTreeStoreManager.Get("Auth.OAuth.Facebook.AppId", ""); }
         }
 
         /// <summary>
@@ -716,3 +716,4 @@ namespace AuthKit.Authentication
         #endregion
     }
 }
+

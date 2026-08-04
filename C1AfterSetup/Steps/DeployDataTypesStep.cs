@@ -7,8 +7,10 @@ using C1AfterSetup.Detect;
 namespace C1AfterSetup.Steps
 {
     /// <summary>
-    /// DataMetaData XML'lerini parent-first gruplar halinde ~/App_Data/Composite/DataMetaData klasörüne kopyalar.
-    /// Online modda her grup sonrası C1'in Composite.Generated.dll'i yeniden üretmesi beklenir.
+    /// DataMetaData XML'lerini parent-first gruplar halinde ~/App_Data/Composite/PendingDataTypes
+    /// klasörüne kopyalar. Bu klasör, DataTypeAutoInstaller [ApplicationStartup] hook'u tarafından
+    /// okunur; hook, tipleri DynamicTypeManager.CreateStore ile KAYDEDİP Composite.Generated.dll'e
+    /// girdirir. (Doğrudan DataMetaData klasörüne atılan kayıtsız XML'ler C1 tarafından silinir.)
     ///
     /// Verify: manifest'teki tüm eşleşen DataMetaData dosyaları hedefte, kaynakla aynıysa true.
     /// Execute: yalnızca eksik/farklı dosyaları yeniler.
@@ -26,7 +28,7 @@ namespace C1AfterSetup.Steps
             if (!Directory.Exists(srcDir)) return true; // kaynak yoksa kontrol edilemez
             if (context.Manifest.DataTypes.Count == 0) return true;
 
-            string targetDir = context.ResolveSite(Path.Combine("App_Data", "Composite", "DataMetaData"));
+            string targetDir = context.ResolveSite(Path.Combine("App_Data", "Composite", "PendingDataTypes"));
             foreach (var entry in context.Manifest.DataTypes)
             {
                 string pattern = Path.GetFileName(entry.File);
@@ -48,7 +50,7 @@ namespace C1AfterSetup.Steps
 
         public bool Execute(SetupContext context)
         {
-            string targetDir = context.ResolveSite(Path.Combine("App_Data", "Composite", "DataMetaData"));
+            string targetDir = context.ResolveSite(Path.Combine("App_Data", "Composite", "PendingDataTypes"));
             Directory.CreateDirectory(targetDir);
 
             List<DataTypeEntry> entries = context.Manifest.DataTypes;

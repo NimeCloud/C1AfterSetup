@@ -88,6 +88,13 @@ namespace C1AfterSetup
         public List<string> BinDependencies { get; set; }
         public WebConfigSettings WebConfig { get; set; }
 
+        /// <summary>
+        /// İlk başlatma sonrası C1'in üretmesi beklenen tam nitelikli veri tipi adları
+        /// (ör. "AuthKit.KeyTreeStore.Data.KeyTreeItem"). Doğrulama adımı, bu tiplerin
+        /// Composite.Generated.dll içinde üretildiğini yansıma ile kontrol eder.
+        /// </summary>
+        public List<string> GeneratedTypes { get; set; }
+
         public SetupManifest()
         {
             DataTypes = new List<DataTypeEntry>();
@@ -96,6 +103,7 @@ namespace C1AfterSetup
             Razor = new List<FileMapping>();
             BinDependencies = new List<string>();
             WebConfig = new WebConfigSettings();
+            GeneratedTypes = new List<string>();
         }
 
         public static SetupManifest Load(string path)

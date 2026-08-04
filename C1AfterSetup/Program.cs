@@ -22,9 +22,12 @@ namespace C1AfterSetup
 
             string sitePath = null;
             string siteUrl = null;
+            string outDir = null;
             RunMode mode = RunMode.Offline;
             bool dryRun = false;
             bool force = false;
+            bool fresh = false;
+            bool capture = false;
             string manifestPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "setup.manifest.json");
 
             for (int i = 0; i < args.Length; i++)
@@ -38,6 +41,9 @@ namespace C1AfterSetup
                     case "-url":
                         if (i + 1 < args.Length) siteUrl = args[++i];
                         break;
+                    case "-out":
+                        if (i + 1 < args.Length) outDir = args[++i];
+                        break;
                     case "-mode":
                         if (i + 1 < args.Length)
                             mode = args[++i].ToLowerInvariant() == "online" ? RunMode.Online : RunMode.Offline;
@@ -47,6 +53,12 @@ namespace C1AfterSetup
                         break;
                     case "-force":
                         force = true;
+                        break;
+                    case "-fresh":
+                        fresh = true;
+                        break;
+                    case "-capture":
+                        capture = true;
                         break;
                     case "-manifest":
                         if (i + 1 < args.Length) manifestPath = args[++i];
@@ -71,6 +83,27 @@ namespace C1AfterSetup
                 return 1;
             }
 
+            // -out verildiyse: kaynak siteyi ayrı bir dağıtım klasörüne kopyala ve
+            // pipeline'ı o klasöre uygula. Böylece çalışan Web.config/Website klasörü bozulmaz.
+            if (!string.IsNullOrWhiteSpace(outDir))
+            {
+                string srcRoot = Path.GetFullPath(sitePath).TrimEnd('\\');
+                string dstRoot = Path.GetFullPath(outDir).TrimEnd('\\');
+                if (string.Equals(srcRoot, dstRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine("HATA: -out hedefi, -site ile aynı klasör olamaz. In-place için -out vermeyin.");
+                    return 1;
+                }
+                if (Directory.Exists(dstRoot) && Directory.GetFileSystemEntries(dstRoot).Length > 0)
+                {
+                    Console.WriteLine("HATA: -out hedefi boş değil: " + dstRoot + ". Lütfen boşaltın veya başka yol verin.");
+                    return 1;
+                }
+                Console.WriteLine("Site dağıtım klasörüne kopyalanıyor: " + srcRoot + " -> " + dstRoot);
+                CopyDirectoryRecursive(srcRoot, dstRoot);
+                sitePath = dstRoot;
+            }
+
             SetupManifest manifest;
             try
             {
@@ -82,19 +115,41 @@ namespace C1AfterSetup
                 return 1;
             }
 
-            var context = new SetupContext(sitePath, mode, dryRun, siteUrl, manifest, force);
+            var context = new SetupContext(sitePath, mode, dryRun, siteUrl, manifest, force, fresh);
+
+            // -capture: tipleri kurulmuş (başlatılmış) bir sitenin bin\Composite.Generated.dll dosyasını
+            // sources\generated\ altına kopyalar; sonraki offline dağıtımlar bunu şip eder.
+            if (capture)
+            {
+                string genSrc = context.ResolveSite(Path.Combine("bin", "Composite.Generated.dll"));
+                if (!File.Exists(genSrc))
+                {
+                    Console.WriteLine("HATA: " + genSrc + " bulunamadı. Tipleri kurulmuş (başlatılmış) bir site gerekir.");
+                    return 1;
+                }
+                string genDir = context.ResolveSource("generated");
+                Directory.CreateDirectory(genDir);
+                string genDst = Path.Combine(genDir, "Composite.Generated.dll");
+                File.Copy(genSrc, genDst, true);
+                Console.WriteLine("Yakalanan Composite.Generated.dll: " + genSrc + " -> " + genDst);
+                Console.WriteLine("Kalıcı yapmak için bu dosyayı C1AfterSetup\\sources\\generated\\ altına kopyalayın.");
+                return 0;
+            }
 
             var steps = new List<ISetupStep>
             {
                 new PreflightStep(),
+                new PrepareFreshStep(),
                 new DeployDependenciesStep(),
                 new DeployDataTypesStep(),
                 new DeployPackageStep(),
+                new CompileGeneratedTypesStep(),
                 new DeployAppCodeStep(),
                 new DeployPageTemplatesStep(),
                 new DeployRazorStep(),
                 new ConfigureWebConfigStep(),
-                new VerifyStep()
+                new VerifyStep(),
+                new VerifyGeneratedTypesStep()
             };
 
             context.Log("=== C1AfterSetup başlıyor ===");
@@ -104,6 +159,7 @@ namespace C1AfterSetup
             context.Log("Manifest : " + manifestPath);
             if (context.DryRun) context.Log("DRY-RUN: hiçbir dosya yazılmayacak.");
             if (force) context.Log("FORCE    : verify atlanarak TÜM adımlar yeniden uygulanacak.");
+            if (fresh) context.Log("FRESH    : hedef site 'hiç başlatılmamış' duruma getirilecek (runtime durumu temizlenir).");
 
             // Önceki çalışmanın (varsa) kayıtlı durumunu özetle
             if (context.State.Steps.Count > 0)
@@ -188,16 +244,38 @@ namespace C1AfterSetup
             catch { return ""; }
         }
 
+        /// <summary>Bir dizin ağacını birebir kopyalar (-out dağıtım klasörü için).</summary>
+        private static void CopyDirectoryRecursive(string source, string target)
+        {
+            Directory.CreateDirectory(target);
+            foreach (string file in Directory.GetFiles(source))
+                File.Copy(file, Path.Combine(target, Path.GetFileName(file)), true);
+            foreach (string dir in Directory.GetDirectories(source))
+                CopyDirectoryRecursive(dir, Path.Combine(target, Path.GetFileName(dir)));
+        }
+
         private static void PrintHelp()
         {
             Console.WriteLine("Kullanım:");
-            Console.WriteLine("  C1AfterSetup.exe -site <C1-Site-Klasoru> [-mode online|offline] [-url <site-url>] [-dryrun] [-manifest <yol>]");
-            Console.WriteLine("  -site     : Hedef C1 CMS web sitesi kök klasörü (zorunlu)");
+            Console.WriteLine("  C1AfterSetup.exe -site <C1-Site-Klasoru> [-out <dağıtım-klasörü>] [-mode online|offline] [-url <site-url>] [-dryrun] [-manifest <yol>] [-fresh]");
+            Console.WriteLine("  -site     : Kaynak / hedef C1 CMS web sitesi kök klasörü (zorunlu)");
+            Console.WriteLine("  -out      : Verilirse, -site'i bu klasöre kopyalar ve pipeline'ı oraya uygular;");
+            Console.WriteLine("              kaynak klasör (çalışan siteniz) bozulmaz. Hedef boş olmalıdır.");
             Console.WriteLine("  -mode     : online (C1 çalışırken, fazlar arası derleme bekler) veya offline (varsayılan)");
             Console.WriteLine("  -url      : Online mod için site adresi (ör. https://localhost/site) - derleme sağlık kontrolünde kullanılır");
             Console.WriteLine("  -dryrun   : Hiçbir şey yazmaz, planlanan adımları raporlar");
             Console.WriteLine("  -force    : Verify'ı atlar; TÜM adımları kaynaklardan yeniden uygular (yeni yedek alır)");
+            Console.WriteLine("  -fresh    : Hedefi 'hiç başlatılmamış' duruma getirir; C1 runtime durumunu (DataStores,");
+            Console.WriteLine("              Packages işaretleri, bayat bin\\Composite.Generated.dll vb.) temizler, böylece");
+            Console.WriteLine("              ilk açılışta AutoInstallPackages işlenir ve üretilen dll sıfırdan oluşur.");
+            Console.WriteLine("  -capture  : Hedef sitedeki (tipleri kurulmuş) bin\\Composite.Generated.dll dosyasını");
+            Console.WriteLine("              sources\\generated\\ altına kopyalar; sonraki offline dağıtımlar bunu şip eder.");
             Console.WriteLine("  -manifest : Alternatif manifest yolu (varsayılan Config\\setup.manifest.json)");
+            Console.WriteLine();
+            Console.WriteLine("Sıfır manuel adımlı fresh dağıtım:");
+            Console.WriteLine("  C1AfterSetup.exe -site <yeni-site-kopysi> -fresh   (offline, site kapalıyken)");
+            Console.WriteLine("  -> Klasörü sunucuya kopyala ve ilk kez başlat; C1 paketi kurar, tipleri üretir.");
+            Console.WriteLine("  -> Sonra doğrulamak için: -mode online -url <adres> (ilk açılış sonrası).");
             Console.WriteLine();
             Console.WriteLine("Yeniden çalıştırılabilirlik:");
             Console.WriteLine("  Her adım önce hedef durumu verify eder; zaten güncelse atlar, farklıysa yeniler.");

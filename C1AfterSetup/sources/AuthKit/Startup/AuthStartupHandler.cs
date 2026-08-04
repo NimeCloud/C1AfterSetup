@@ -39,7 +39,7 @@ namespace AuthKit.Startup
                 try
                 {
                     // 0. KeyTreeStore root sentinel'ini hazirla (C1 Data sekmesinde tek kok)
-                    KeyTreeStore.KeyTreeStoreManager.EnsureRoot();
+                    global::KeyTreeStoreKit.KeyTreeStoreManager.EnsureRoot();
 
                     // 1. Key alanlarini doldur
                     Authorization.KeyInitializer.InitializeAllKeys(typeof(Authorization.GroupKeys));
@@ -59,3 +59,4 @@ namespace AuthKit.Startup
         }
     }
 }
+
