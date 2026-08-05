@@ -86,6 +86,7 @@ namespace C1AfterSetup
         public List<TemplateEntry> Templates { get; set; }
         public List<FileMapping> Razor { get; set; }
         public List<string> BinDependencies { get; set; }
+        public bool RoslynEnabled { get; set; }
         public WebConfigSettings WebConfig { get; set; }
 
         /// <summary>

@@ -125,7 +125,28 @@ namespace C1AfterSetup.Steps
                 context.Log("  sources/overrides boş - atlandı.");
             }
 
-            // 3) sources/generated: yakalanmış (tipleri içeren) Composite.Generated.dll varsa ~/bin'e kopyala.
+            // 3) sources/roslyn: Roslyn compiler dosyalari ~/bin/roslyn altina kopyalanir
+            //    (Microsoft.CodeDom.Providers.DotNetCompilerPlatform icin gerekli).
+            if (context.Manifest.RoslynEnabled)
+            {
+                string roslynSrc = context.ResolveSource("roslyn");
+                if (Directory.Exists(roslynSrc))
+                {
+                    string roslynDst = Path.Combine(targetBin, "roslyn");
+                    int roslynChanged = FileSyncUtil.SyncDirectory(roslynSrc, roslynDst);
+                    updated += roslynChanged;
+                    if (roslynChanged > 0)
+                        context.Log("  + roslyn/ (dizin) -> ~/bin/roslyn/ (" + roslynChanged + " dosya güncellendi)");
+                    else
+                        context.Log("  = roslyn/ (dizin) zaten güncel");
+                }
+                else
+                {
+                    context.Warn("  sources/roslyn yok, Roslyn compiler kopyalanamadi.");
+                }
+            }
+
+            // 4) sources/generated: yakalanmış (tipleri içeren) Composite.Generated.dll varsa ~/bin'e kopyala.
             //    Böylece App_Code, derleme anında tipleri bulur (ASP.NET, C1 Application_Start'tan ÖNCE App_Code derler).
             string generatedSrc = context.ResolveSource(Path.Combine("generated", "Composite.Generated.dll"));
             if (File.Exists(generatedSrc))

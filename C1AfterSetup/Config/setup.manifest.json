@@ -1,7 +1,9 @@
 {
     "binDependencies": [
-        "BCrypt.Net-Next.dll"
+        "BCrypt.Net-Next.dll",
+        "Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll"
     ],
+    "roslynEnabled": true,
     "dataTypes": [
         {
             "file": "Group *.xml",
@@ -83,6 +85,14 @@
             {
                 "source": "HeaderCleanupModule.cs",
                 "target": "~/App_Code/HeaderCleanupModule.cs"
+            },
+            {
+                "source": "AuthApi.cs",
+                "target": "~/App_Code/AuthApi.cs"
+            },
+            {
+                "source": "AuthRouteHandler.cs",
+                "target": "~/App_Code/AuthRouteHandler.cs"
             }
         ]
     },

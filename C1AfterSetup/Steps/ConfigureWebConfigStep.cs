@@ -128,7 +128,54 @@ namespace C1AfterSetup.Steps
                 }
             }
 
-            // 4) compilation/assemblies: App_Code'un ihtiyaç duyduğu framework referansları
+            // 4) system.codedom: Roslyn compiler (Microsoft.CodeDom.Providers.DotNetCompilerPlatform)
+            //    C1 CMS eski Roslyn ile gelir (C# 5). Yeni compiler ile C# 6+ destegi saglanir.
+            if (context.Manifest.RoslynEnabled)
+            {
+                XmlElement codedom = GetOrCreate(doc.DocumentElement, "system.codedom");
+                XmlElement compilers = GetOrCreate(codedom, "compilers");
+                const string roslynTypePrefix =
+                    "Microsoft.CodeDom.Providers.DotNetCompilerPlatform.";
+
+                if (!HasCompiler(compilers, "c#"))
+                {
+                    XmlElement csEl = doc.CreateElement("compiler");
+                    csEl.SetAttribute("language", "c#;cs;csharp");
+                    csEl.SetAttribute("extension", ".cs");
+                    csEl.SetAttribute("type", roslynTypePrefix +
+                        "CSharpCodeProvider, Microsoft.CodeDom.Providers.DotNetCompilerPlatform, " +
+                        "Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35");
+                    csEl.SetAttribute("warningLevel", "4");
+                    csEl.SetAttribute("compilerOptions", "/langversion:default /nowarn:1659;1699;1701");
+                    compilers.AppendChild(csEl);
+                    context.Log("  + system.codedom compiler C# (Roslyn)");
+                    changed = true;
+                }
+
+                if (!HasCompiler(compilers, "vb"))
+                {
+                    XmlElement vbEl = doc.CreateElement("compiler");
+                    vbEl.SetAttribute("language", "vb;vbs;visualbasic;vbscript");
+                    vbEl.SetAttribute("extension", ".vb");
+                    vbEl.SetAttribute("type", roslynTypePrefix +
+                        "VBCodeProvider, Microsoft.CodeDom.Providers.DotNetCompilerPlatform, " +
+                        "Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35");
+                    vbEl.SetAttribute("warningLevel", "4");
+                    vbEl.SetAttribute("compilerOptions",
+                        "/langversion:default /nowarn:41008 /define:_MYTYPE=\\\"Web\\\" " +
+                        "/imports:Microsoft.VisualBasic,System,System.Collections," +
+                        "System.Collections.Specialized,System.Configuration,System.Text," +
+                        "System.Text.RegularExpressions,System.Web,System.Web.Caching," +
+                        "System.Web.SessionState,System.Web.Security,System.Web.Profile," +
+                        "System.Web.UI,System.Web.UI.WebControls,System.Web.UI.WebControls.WebParts," +
+                        "System.Web.UI.HtmlControls");
+                    compilers.AppendChild(vbEl);
+                    context.Log("  + system.codedom compiler VB (Roslyn)");
+                    changed = true;
+                }
+            }
+
+            // 5) compilation/assemblies: App_Code'un ihtiyaç duyduğu framework referansları
             //    (örn. System.Net.Http) Web.config'te eksikse eklenir.
             if (cfg.AssemblyReferences != null && cfg.AssemblyReferences.Count > 0)
             {
@@ -273,6 +320,17 @@ namespace C1AfterSetup.Steps
             foreach (XmlNode n in modules.SelectNodes("add"))
             {
                 if (n.Attributes != null && n.Attributes["name"] != null && n.Attributes["name"].Value == name)
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool HasCompiler(XmlElement compilers, string languagePrefix)
+        {
+            foreach (XmlNode n in compilers.SelectNodes("compiler"))
+            {
+                if (n.Attributes != null && n.Attributes["language"] != null
+                    && n.Attributes["language"].Value.StartsWith(languagePrefix))
                     return true;
             }
             return false;
