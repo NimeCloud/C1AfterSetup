@@ -80,8 +80,8 @@ System.Collections.Generic.Dictionary<string, object>;
     </div>
     <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
     <div class="d-flex justify-content-between mt-3 small">
-        <a href="~/Register">Kayıt Ol</a>
-        <a href="~/Forgot-Password">Şifremi Unuttum</a>
+        <a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")">Kayıt Ol</a>
+        <a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")">Şifremi Unuttum</a>
     </div>
 </form>
 

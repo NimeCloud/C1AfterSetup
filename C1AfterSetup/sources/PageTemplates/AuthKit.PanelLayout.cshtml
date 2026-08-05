@@ -31,7 +31,8 @@
         }
         else
         {
-            Response.Redirect("~/login?redirect=" + HttpUtility.UrlEncode(urlCurrent));
+            Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/login") +
+"?redirect=" + HttpUtility.UrlEncode(urlCurrent));
         }
     }
 }
@@ -103,29 +104,34 @@
             <div class="collapse navbar-collapse" id="authkitNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="~/Users">
+                        <a class="nav-link"
+                           href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/Users")">
                             <i class="ti ti-users me-1"></i>Kullanıcılar
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="~/Groups">
+                        <a class="nav-link"
+                           href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c3c03000-0000-0000-0000-c3c0c3c0c3c0"), "~/Groups")">
                             <i class="ti ti-users-group me-1"></i>Gruplar
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="~/Group-Permissions">
+                        <a class="nav-link"
+                           href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d4d04000-0000-0000-0000-d4d0d4d0d4d0"), "~/Group-Permissions")">
                             <i class="ti ti-shield-check me-1"></i>Grup Yetkileri
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="~/User-Permissions">
+                        <a class="nav-link"
+                           href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("e5e05000-0000-0000-0000-e5e0e5e0e5e0"), "~/User-Permissions")">
                             <i class="ti ti-key me-1"></i>Kullanıcı Yetkileri
                         </a>
                     </li>
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="~/Logout">
+                        <a class="nav-link"
+                           href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d0d0a000-0000-0000-0000-d0d0d0d0d0d0"), "~/Logout")">
                             <i class="ti ti-logout me-1"></i>Çıkış
                         </a>
                     </li>
