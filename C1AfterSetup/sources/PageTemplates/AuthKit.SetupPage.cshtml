@@ -97,10 +97,10 @@ MenuTitle: "Kullanici Yetkileri"),
             try
             {
                 if (AuthKit.Authentication.AuthenticationManager.LoginPageId != Guid.Empty)
-                    KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.LoginPageId",
+                    AuthKit.Settings.SettingsManager.Set("Auth.LoginPageId",
 AuthKit.Authentication.AuthenticationManager.LoginPageId.ToString());
                 if (AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId != Guid.Empty)
-                    KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.ResetPasswordPageId",
+                    AuthKit.Settings.SettingsManager.Set("Auth.ResetPasswordPageId",
 AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
             }
             catch { }
@@ -143,8 +143,8 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
         {
             var googleClientId = (Request["googleClientId"] ?? "").Trim();
             var facebookAppId = (Request["facebookAppId"] ?? "").Trim();
-            KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.OAuth.Google.ClientId", googleClientId);
-            KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.OAuth.Facebook.AppId", facebookAppId);
+            AuthKit.Settings.SettingsManager.Set("Auth.OAuth.Google.ClientId", googleClientId);
+            AuthKit.Settings.SettingsManager.Set("Auth.OAuth.Facebook.AppId", facebookAppId);
             saveOAuthMessage = "OAuth ayarlari basariyla kaydedildi.";
         }
         catch (Exception ex)
@@ -198,91 +198,100 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
                 </div>
 
                 <div class="card mb-3">
-                    <div class="card-header">Kurulacak 9 Sayfa</div>
+                    <div class="card-header">AuthKit Sayfalari</div>
                     <div class="card-body">
                         <table class="table table-sm">
                             <thead>
                                 <tr>
                                     <th>Sayfa</th>
-                                    <th>URL</th>
+                                    <th>Link</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td>Kullanici Yonetimi</td>
-                                    <td>/Users</td>
-                                </tr>
-                                <tr>
-                                    <td>Grup Yonetimi</td>
-                                    <td>/Groups</td>
-                                </tr>
-                                <tr>
-                                    <td>Grup Yetkileri</td>
-                                    <td>/Group-Permissions</td>
-                                </tr>
-                                <tr>
-                                    <td>Kullanici Yetkileri</td>
-                                    <td>/User-Permissions</td>
-                                </tr>
-                                <tr>
-                                    <td>Giris</td>
-                                    <td>/Login</td>
-                                </tr>
-                                <tr>
-                                    <td>Kayit</td>
-                                    <td>/Register</td>
-                                </tr>
-                                <tr>
-                                    <td>Sifremi Unuttum</td>
-                                    <td>/Forgot-Password</td>
-                                </tr>
-                                <tr>
-                                    <td>Sifre Sifirla</td>
-                                    <td>/Reset-Password</td>
-                                </tr>
-                                <tr>
-                                    <td>Cikis</td>
-                                    <td>/Logout</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                                    <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/Users")"
+                                               class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Grup Yonetimi</td>
+                                        <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c3c03000-0000-0000-0000-c3c0c3c0c3c0"), "~/Groups")"
+                                                   class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Grup Yetkileri</td>
+                                            <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d4d04000-0000-0000-0000-d4d0d4d0d4d0"), "~/Group-Permissions")"
+                                                       class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Kullanici Yetkileri</td>
+                                                <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("e5e05000-0000-0000-0000-e5e0e5e0e5e0"), "~/User-Permissions")"
+                                                           class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Giris</td>
+                                                    <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/Login")"
+                                                               class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Kayit</td>
+                                                        <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")"
+                                                                   class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Sifremi Unuttum</td>
+                                                            <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")"
+                                                                       class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td>Sifre Sifirla</td>
+                                                                <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c9c09000-0000-0000-0000-c9c0c9c0c9c0"), "~/Reset-Password")"
+                                                                           class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td>Cikis</td>
+                                                                    <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d0d0a000-0000-0000-0000-d0d0d0d0d0d0"), "~/Logout")"
+                                                                               class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
 
-                <div class="card mb-3">
-                    <div class="card-header">OAuth Yapilandirma (Google / Facebook Giris)</div>
-                    <div class="card-body">
-                        @if (!string.IsNullOrEmpty(saveOAuthMessage))
-                        {
-                            <div class="alert alert-success">@saveOAuthMessage</div>
-                        }
-                        <p class="text-muted">Google ve Facebook ile giris yapmak icin istemci kimliklerini (Client ID / App ID)
-                            asagiya girin ve kaydedin.</p>
-                            <form method="post" action="?action=saveoauth">
-                                <div class="mb-3">
-                                    <label class="form-label">Google Client ID</label>
-                                    <input type="text" class="form-control" name="googleClientId"
-                                           value="@(AuthKit.Authentication.AuthenticationManager.GoogleClientId)"
-                                           placeholder="xxxxxx.apps.googleusercontent.com" />
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Facebook App ID</label>
-                                    <input type="text" class="form-control" name="facebookAppId"
-                                           value="@(AuthKit.Authentication.AuthenticationManager.FacebookAppId)"
-                                           placeholder="1234567890123456" />
-                                </div>
-                                <button type="submit" class="btn btn-secondary">OAuth Ayarlarini Kaydet</button>
-                            </form>
-                        </div>
-                    </div>
+                                                    <div class="card mb-3">
+                                                        <div class="card-header">OAuth Yapilandirma (Google / Facebook Giris)</div>
+                                                        <div class="card-body">
+                                                            @if (!string.IsNullOrEmpty(saveOAuthMessage))
+                                                            {
+                                                                <div class="alert alert-success">@saveOAuthMessage</div>
+                                                            }
+                                                            <p class="text-muted">Google ve Facebook ile giris yapmak icin istemci kimliklerini (Client ID / App ID)
+                                                                asagiya girin ve kaydedin.</p>
+                                                                <form method="post" action="?action=saveoauth">
+                                                                    <div class="mb-3">
+                                                                        <label class="form-label">Google Client ID</label>
+                                                                        <input type="text" class="form-control" name="googleClientId"
+                                                                               value="@(AuthKit.Authentication.AuthenticationManager.GoogleClientId)"
+                                                                               placeholder="xxxxxx.apps.googleusercontent.com" />
+                                                                    </div>
+                                                                    <div class="mb-3">
+                                                                        <label class="form-label">Facebook App ID</label>
+                                                                        <input type="text" class="form-control" name="facebookAppId"
+                                                                               value="@(AuthKit.Authentication.AuthenticationManager.FacebookAppId)"
+                                                                               placeholder="1234567890123456" />
+                                                                    </div>
+                                                                    <button type="submit" class="btn btn-secondary">OAuth Ayarlarini Kaydet</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
 
-                    <a href="?action=create" class="btn btn-primary btn-lg"
-                       onclick="return confirm('9 sayfa olusturulacak. Devam etmek istiyor musunuz?');">
-                        Sayfalari Olustur
-                    </a>
-                    <p class="text-muted mt-2">Var olan sayfalar atlanir.</p>
-                }
-            </div>
-        </body>
+                                                        <a href="?action=create" class="btn btn-primary btn-lg"
+                                                           onclick="return confirm('9 sayfa olusturulacak. Devam etmek istiyor musunuz?');">
+                                                            Sayfalari Olustur
+                                                        </a>
+                                                        <p class="text-muted mt-2">Var olan sayfalar atlanir.</p>
+                                                    }
+                                                </div>
+                                            </body>
 
-    </html>
+                                        </html>
