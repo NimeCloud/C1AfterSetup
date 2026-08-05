@@ -62,6 +62,7 @@
     <Compile Include="Steps\DeployPackageStep.cs" />
     <Compile Include="Steps\DeployAppCodeStep.cs" />
     <Compile Include="Steps\DeployPageTemplatesStep.cs" />
+    <Compile Include="Steps\DeployAuthKitPagesStep.cs" />
     <Compile Include="Steps\DeployRazorStep.cs" />
     <Compile Include="Steps\ConfigureWebConfigStep.cs" />
     <Compile Include="Steps\VerifyStep.cs" />

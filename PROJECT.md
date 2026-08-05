@@ -1,4 +1,4 @@
-# C1AfterSetup — Project Knowledge Base
+r:\deploy5 klasörüne çıkart# C1AfterSetup — Project Knowledge Base
 
 > **Purpose:** Automate post-installation additions to a C1 CMS Website: AuthKit data types, App_Code modules, page templates, Razor functions, KeyTreeStore, Web.config hardening — with zero manual steps.
 >
@@ -40,18 +40,19 @@ Defined in [`Program.cs`](C1AfterSetup/Program.cs:11) `Main()`:
 
 | # | Step | File | Key Role |
 |---|------|------|----------|
-| 1 | **Preflight** | [`PreflightStep.cs`](C1AfterSetup/Steps/PreflightStep.cs) | Validate site, take backup, gate `-fresh` |
-| 2 | **Fresh Prep** | [`PrepareFreshStep.cs`](C1AfterSetup/Steps/PrepareFreshStep.cs) | Strip runtime state (DataStores/Packages/Cache/Log/AppState/Media) to factory-fresh; preserves DLL if it has expected types |
-| 3 | **Dependencies** | [`DeployDependenciesStep.cs`](C1AfterSetup/Steps/DeployDependenciesStep.cs) | Copy `sources/bin/` + `sources/overrides/` to `~/bin`; ships `sources/generated/Composite.Generated.dll` if present |
-| 4 | **Data Types** | [`DeployDataTypesStep.cs`](C1AfterSetup/Steps/DeployDataTypesStep.cs) | Copy DataMetaData XMLs to `~/App_Data/Composite/PendingDataTypes` (NOT DataMetaData — C1 deletes orphans there) |
-| 5 | **C1 Package** | [`DeployPackageStep.cs`](C1AfterSetup/Steps/DeployPackageStep.cs) | Build `.c1pac` from XMLs → `~/App_Data/Composite/AutoInstallPackages/` |
-| 6 | **Compile DLL** | [`CompileGeneratedTypesStep.cs`](C1AfterSetup/Steps/CompileGeneratedTypesStep.cs) | Deploy hook → IIS Express headless → register types → recycle → DLL generated |
-| 7 | **App_Code** | [`DeployAppCodeStep.cs`](C1AfterSetup/Steps/DeployAppCodeStep.cs) | Deploy AuthKit + KeyTreeStore + HeaderCleanupModule to `~/App_Code` |
-| 8 | **Templates** | [`DeployPageTemplatesStep.cs`](C1AfterSetup/Steps/DeployPageTemplatesStep.cs) | Deploy `.cshtml` page templates (master-first per manifest `order`) |
-| 9 | **Razor** | [`DeployRazorStep.cs`](C1AfterSetup/Steps/DeployRazorStep.cs) | Deploy Razor functions to `~/App_Data/Razor` |
-| 10 | **Web.config** | [`ConfigureWebConfigStep.cs`](C1AfterSetup/Steps/ConfigureWebConfigStep.cs) | Remove headers, register modules, add assembly refs |
-| 11 | **Verify** | [`VerifyStep.cs`](C1AfterSetup/Steps/VerifyStep.cs) | Report deployed files |
-| 12 | **Gen. Verify** | [`VerifyGeneratedTypesStep.cs`](C1AfterSetup/Steps/VerifyGeneratedTypesStep.cs) | Online: check DLL types, HTTP 200, DataStore files, C1 log errors |
+|  1 | **Preflight** | [`PreflightStep.cs`](C1AfterSetup/Steps/PreflightStep.cs) | Validate site, take backup, gate `-fresh` |
+|  2 | **Fresh Prep** | [`PrepareFreshStep.cs`](C1AfterSetup/Steps/PrepareFreshStep.cs) | Strip runtime state (DataStores/Packages/Cache/Log/AppState/Media) to factory-fresh; preserves DLL if it has expected types |
+|  3 | **Dependencies** | [`DeployDependenciesStep.cs`](C1AfterSetup/Steps/DeployDependenciesStep.cs) | Copy `sources/bin/` + `sources/overrides/` to `~/bin`; ships `sources/generated/Composite.Generated.dll` if present |
+|  4 | **Data Types** | [`DeployDataTypesStep.cs`](C1AfterSetup/Steps/DeployDataTypesStep.cs) | Copy DataMetaData XMLs to `~/App_Data/Composite/PendingDataTypes` (NOT DataMetaData — C1 deletes orphans there) |
+|  5 | **C1 Package** | [`DeployPackageStep.cs`](C1AfterSetup/Steps/DeployPackageStep.cs) | Build `.c1pac` from XMLs → `~/App_Data/Composite/AutoInstallPackages/` |
+|  6 | **Compile DLL** | [`CompileGeneratedTypesStep.cs`](C1AfterSetup/Steps/CompileGeneratedTypesStep.cs) | Deploy hook → IIS Express headless → register types → recycle → DLL generated |
+|  7 | **App_Code** | [`DeployAppCodeStep.cs`](C1AfterSetup/Steps/DeployAppCodeStep.cs) | Deploy AuthKit + KeyTreeStore + HeaderCleanupModule to `~/App_Code` |
+|  8 | **Templates** | [`DeployPageTemplatesStep.cs`](C1AfterSetup/Steps/DeployPageTemplatesStep.cs) | Deploy `.cshtml` page templates (master-first per manifest `order`) |
+|  9 | **AuthKit Pages** | [`DeployAuthKitPagesStep.cs`](C1AfterSetup/Steps/DeployAuthKitPagesStep.cs) | Generate 10 AuthKit pages programmatically in DataStores XMLs (Home + 9 sub-pages) |
+| 10 | **Razor** | [`DeployRazorStep.cs`](C1AfterSetup/Steps/DeployRazorStep.cs) | Deploy Razor functions to `~/App_Data/Razor` |
+| 11 | **Web.config** | [`ConfigureWebConfigStep.cs`](C1AfterSetup/Steps/ConfigureWebConfigStep.cs) | Remove headers, register modules, add assembly refs |
+| 12 | **Verify** | [`VerifyStep.cs`](C1AfterSetup/Steps/VerifyStep.cs) | Report deployed files |
+| 13 | **Gen. Verify** | [`VerifyGeneratedTypesStep.cs`](C1AfterSetup/Steps/VerifyGeneratedTypesStep.cs) | Online: check DLL types, HTTP 200, DataStore files, C1 log errors |
 
 ---
 
@@ -324,3 +325,15 @@ powershell -File testdata/diag_generated.ps1 -dllPath "r:\deploy\bin\Composite.G
 - Failed steps automatically retried on next run
 - `-force` skips verify and re-applies everything
 - Backups saved to `r:\backups\YYYYMMDD-HHMMSS\` before first mutation
+
+---
+
+## 14. Debugging Experience
+
+See [`DEBUG-XP.md`](DEBUG-XP.md) for accumulated debugging knowledge:
+- Template GUIDs & page ID mapping
+- C1 DataStores XML format reference
+- Build commands & shell quirks
+- Step registration checklist
+- Known aspnet_compiler false positives
+- `-fresh` behavior details
