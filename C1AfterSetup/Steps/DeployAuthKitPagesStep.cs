@@ -91,17 +91,9 @@ namespace C1AfterSetup.Steps
             }
 
             // IPagePlaceholderContent_tr-TR.xml – AuthKit sayfalarina Razor fonksiyonlarini
-            // (LoginForm, RegisterForm vb.) baglar. Bu olmadan sayfa sablonu render edilir
-            // fakat placeholder ici bos kalir.
-            string srcPlaceholder = Path.Combine(srcDir, "Composite.Data.Types.IPagePlaceholderContent_tr-TR.xml");
-            string dstPlaceholder = Path.Combine(dstDir, "Composite.Data.Types.IPagePlaceholderContent_tr-TR.xml");
-
-            if (File.Exists(srcPlaceholder))
-            {
-                MergePlaceholderXml(srcPlaceholder, dstPlaceholder,
-                    "Composite.Data.Types.IPagePlaceholderContent_tr-TR",
-                    context, "IPagePlaceholderContent");
-            }
+            // (LoginForm, RegisterForm vb.) baglar. PlaceholderContent XElement'larini
+            // programmatic olarak olusturur (XML entity escaping sorunu olmamasi icin).
+            WritePlaceholderContent(dstDir, context);
 
             // KeyTreeStoreKit DataStore XML'ini merge et (Root + Auth.LoginPageId + Auth.ResetPasswordPageId).
             // Bu sayede PanelLayout, UserManagementPage vb. sayfalar page-ID tabanlı yönlendirme yapabilir
@@ -122,7 +114,7 @@ namespace C1AfterSetup.Steps
         {
             context.Log("  - sources/DataStores XML'leri hedef DataStores'a merge edilir (mevcut sayfalar korunur)");
             context.Log("  - 9 AuthKit sayfasi: Login, Register, Forgot, Reset, Logout, Users, Groups, GroupPerms, UserPerms");
-            context.Log("  - PlaceholderContent: AuthKit Razor fonksiyonlari sayfa placeholder'larina baglanir");
+            context.Log("  - PlaceholderContent: AuthKit Razor fonksiyonlari sayfa placeholder'larina baglanir (programmatic)");
         }
 
         private static void MergeXml(string srcPath, string dstPath, string rootName, string elementName,
@@ -176,49 +168,60 @@ namespace C1AfterSetup.Steps
         }
 
         /// <summary>
-        /// PlaceholderContent XML'leri icin ozel merge: (PageId + PlaceHolderId) bilesik anahtar
-        /// kullanir. Ayni sayfanin birden fazla placeholder'i olabilir.
+        /// AuthKit auth sayfalari (Login, Register, ForgotPassword, ResetPassword, Logout) icin
+        /// IPagePlaceholderContent DataStore XML'ine programmatic olarak placeholder content
+        /// ekler. Her sayfanin "content" placeholder'ina ilgili Razor fonksiyonu baglanir.
+        ///
+        /// C1 CMS, placeholder content'i su HTML/XHTML yapisinda saklar:
+        ///   <html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>
+        ///   <f:function name="AuthKit.LoginForm" xmlns:f="http://www.composite.net/ns/function/1.0" />
+        ///   </body></html>
+        ///
+        /// Content degeri, XAttribute icine yerlestirildiginde .NET otomatik olarak
+        /// < > " gibi XML entity'lerini dogru sekilde escape eder.
         /// </summary>
-        private static void MergePlaceholderXml(string srcPath, string dstPath, string typeName,
-            SetupContext context, string label)
+        private static void WritePlaceholderContent(string dstDir, SetupContext context)
         {
-            XDocument srcDoc;
-            try { srcDoc = XDocument.Load(srcPath); }
-            catch (Exception ex) { context.Error(label + " kaynak XML okunamadi: " + ex.Message); return; }
+            string label = "IPagePlaceholderContent";
+            string dstPath = Path.Combine(dstDir, "Composite.Data.Types.IPagePlaceholderContent_tr-TR.xml");
 
-            XElement srcRoot = srcDoc.Root;
-            if (srcRoot == null || srcRoot.Name != "PagePlaceholderContentElementsElements")
+            // Auth sayfalari icin PageId -> RazorFunctionName eslesmesi
+            var authPageMappings = new[]
             {
-                context.Warn(label + " kaynak XML kok elemani gecersiz, atlaniyor.");
-                return;
-            }
+                new { PageId = "f6f06000-0000-0000-0000-f6f0f6f0f6f0", Function = "AuthKit.LoginForm" },
+                new { PageId = "a7a07000-0000-0000-0000-a7a0a7a0a7a0", Function = "AuthKit.RegisterForm" },
+                new { PageId = "b8b08000-0000-0000-0000-b8b0b8b0b8b0", Function = "AuthKit.ForgotPasswordForm" },
+                new { PageId = "c9c09000-0000-0000-0000-c9c0c9c0c9c0", Function = "AuthKit.ResetPasswordForm" },
+                new { PageId = "d0d0a000-0000-0000-0000-d0d0d0d0d0d0", Function = "AuthKit.LogoutForm" },
+            };
 
+            string rootName = "PagePlaceholderContentElementsElements";
+            string elementName = "PagePlaceholderContentElements";
+
+            // Hedef XML'i yukle veya olustur
             XDocument dstDoc;
             if (File.Exists(dstPath))
             {
                 try { dstDoc = XDocument.Load(dstPath); }
-                catch { dstDoc = new XDocument(new XElement("PagePlaceholderContentElementsElements")); }
+                catch { dstDoc = new XDocument(new XElement(rootName)); }
             }
             else
             {
-                dstDoc = new XDocument(new XElement("PagePlaceholderContentElementsElements"));
+                dstDoc = new XDocument(new XElement(rootName));
             }
 
             XElement dstRoot = dstDoc.Root;
-            if (dstRoot == null) dstRoot = new XElement("PagePlaceholderContentElementsElements");
+            if (dstRoot == null) dstRoot = new XElement(rootName);
 
             int added = 0, skipped = 0;
-            foreach (XElement srcEl in srcRoot.Elements("PagePlaceholderContentElements"))
+            foreach (var mapping in authPageMappings)
             {
-                string pageId = (string)srcEl.Attribute("PageId");
-                string placeholderId = (string)srcEl.Attribute("PlaceHolderId");
-                if (string.IsNullOrEmpty(pageId) || string.IsNullOrEmpty(placeholderId)) continue;
-
+                // Bu (PageId, PlaceHolderId) icin zaten kayit var mi?
                 bool exists = false;
-                foreach (XElement dstEl in dstRoot.Elements("PagePlaceholderContentElements"))
+                foreach (XElement dstEl in dstRoot.Elements(elementName))
                 {
-                    if ((string)dstEl.Attribute("PageId") == pageId
-                        && (string)dstEl.Attribute("PlaceHolderId") == placeholderId)
+                    if ((string)dstEl.Attribute("PageId") == mapping.PageId
+                        && (string)dstEl.Attribute("PlaceHolderId") == "content")
                     {
                         exists = true;
                         break;
@@ -226,7 +229,33 @@ namespace C1AfterSetup.Steps
                 }
                 if (exists) { skipped++; continue; }
 
-                dstRoot.Add(new XElement(srcEl));
+                // Content: C1'in bekledigi HTML/XHTML formati.
+                // <html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>
+                // <f:function name="AuthKit.Xyz" xmlns:f="http://www.composite.net/ns/function/1.0" />
+                // </body></html>
+                // XAttribute icine konuldugunda .NET otomatik escape eder.
+                string contentHtml =
+                    "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head></head><body>\n" +
+                    "<f:function name=\"" + mapping.Function + "\" " +
+                    "xmlns:f=\"http://www.composite.net/ns/function/1.0\" />\n" +
+                    "\t</body></html>";
+
+                var now = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
+
+                var el = new XElement(elementName,
+                    new XAttribute("PublicationStatus", "published"),
+                    new XAttribute("ChangeDate", now),
+                    new XAttribute("CreationDate", now),
+                    new XAttribute("ChangedBy", "admin"),
+                    new XAttribute("CreatedBy", "admin"),
+                    new XAttribute("PageId", mapping.PageId),
+                    new XAttribute("PlaceHolderId", "content"),
+                    new XAttribute("Content", contentHtml),
+                    new XAttribute("SourceCultureName", "tr-TR"),
+                    new XAttribute("VersionId", Guid.NewGuid().ToString())
+                );
+
+                dstRoot.Add(el);
                 added++;
             }
 
