@@ -22,7 +22,9 @@
         }
         else
         {
-            Response.Redirect("~/login?redirect=" + HttpUtility.UrlEncode(urlCurrent));
+            Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(
+                new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/login") +
+                "?redirect=" + HttpUtility.UrlEncode(urlCurrent));
         }
     }
 }

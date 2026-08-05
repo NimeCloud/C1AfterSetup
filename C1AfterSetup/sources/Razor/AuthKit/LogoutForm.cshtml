@@ -14,6 +14,6 @@
     }
     else
     {
-        Response.Redirect("~/Login");
+        Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/Login"));
     }
 }

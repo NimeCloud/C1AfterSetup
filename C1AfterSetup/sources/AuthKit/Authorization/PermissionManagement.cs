@@ -26,7 +26,8 @@ namespace AuthKit.Authorization
                 if (LoginPageId != Guid.Empty)
                     HttpContext.Current.Response.Redirect($"~/page({LoginPageId})");
                 else
-                    HttpContext.Current.Response.Redirect("~/login");
+                    HttpContext.Current.Response.Redirect(
+                        AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/login"));
             }
         }
 
