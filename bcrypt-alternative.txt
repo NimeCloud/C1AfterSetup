@@ -1,0 +1,79 @@
+Parola hash'leme işlemi için .NET'in kendi içinde yerleşik olarak bulunan ve PBKDF2 (Password-Based Key Derivation Function 2) algoritmasını kullanan Rfc2898DeriveBytes sınıfını kesinlikle öneririm.
+
+Bu yöntemin sizin senaryonuz için en ideal seçenek olmasının iki temel nedeni var:
+
+Yüksek Portatiflik ve Sıfır Bağımlılık: Bu sınıf System.Security.Cryptography kütüphanesinin bir parçasıdır ve .NET Framework ile birlikte gelir. Projenize dışarıdan hiçbir NuGet paketi veya ekstra DLL eklemenize gerek kalmaz. Sadece kod dosyalarınızı yerel bilgisayarınız ile sunucu arasında senkronize ederek canlıya alırken, bin klasöründeki DLL uyuşmazlıkları veya eksik bağımlılık (şu an yaşadığınız System.Memory hatası gibi) sorunlarıyla asla karşılaşmazsınız. Yapınız tamamen taşınabilir ve hafif kalır.
+
+Endüstri Standardı Güvenlik: PBKDF2, Amerikan Ulusal Standartlar ve Teknoloji Enstitüsü (NIST) tarafından onaylanmış, modern sistemlerde yaygın olarak kullanılan son derece güvenli bir standarttır.
+
+Aşağıda, projenize doğrudan kopyalayıp kullanabileceğiniz, dış bağımlılık gerektirmeyen temiz bir yardımcı sınıf (Helper) örneği hazırladım.
+
+Örnek Kullanım Sınıfı
+C#
+using System;
+using System.Security.Cryptography;
+
+public static class PasswordHelper
+{
+    // Hash boyutu ve iterasyon sayısı (Güvenlik için yeterli standart değerler)
+    private const int SaltSize = 16;
+    private const int HashSize = 20;
+    private const int Iterations = 10000;
+
+    /// <summary>
+    /// Düz metin parolayı güvenli bir şekilde hash'ler.
+    /// </summary>
+    public static string HashPassword(string password)
+    {
+        byte[] salt;
+        new RNGCryptoServiceProvider().GetBytes(salt = new byte[SaltSize]);
+
+        var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations);
+        byte[] hash = pbkdf2.GetBytes(HashSize);
+
+        byte[] hashBytes = new byte[SaltSize + HashSize];
+        Array.Copy(salt, 0, hashBytes, 0, SaltSize);
+        Array.Copy(hash, 0, hashBytes, SaltSize, HashSize);
+
+        return Convert.ToBase64String(hashBytes);
+    }
+
+    /// <summary>
+    /// Girilen parolanın, veritabanındaki hash ile eşleşip eşleşmediğini kontrol eder.
+    /// </summary>
+    public static bool VerifyPassword(string password, string savedPasswordHash)
+    {
+        try
+        {
+            byte[] hashBytes = Convert.FromBase64String(savedPasswordHash);
+
+            byte[] salt = new byte[SaltSize];
+            Array.Copy(hashBytes, 0, salt, 0, SaltSize);
+
+            var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations);
+            byte[] hash = pbkdf2.GetBytes(HashSize);
+
+            for (int i = 0; i < HashSize; i++)
+            {
+                if (hashBytes[i + SaltSize] != hash[i])
+                    return false;
+            }
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+Nasıl Kullanacaksınız?
+
+Yeni bir kullanıcı kaydederken:
+string dbKaydedilecekHash = PasswordHelper.HashPassword("KullaniciSifresi123");
+
+Kullanıcı giriş yaparken (Login kontrolü):
+bool dogruMu = PasswordHelper.VerifyPassword("KullaniciSifresi123", dbKaydedilecekHash);
+
+Bu kod bloğu, hem BCrypt kütüphanesinin yapmaya çalıştığı işi eksiksiz ve güvenli bir şekilde yapar hem de sunucuya dosya atarken sizi ek kütüphane taşıma zahmetinden kurtarır.
+
+Bu yapıyı projenizdeki mevcut kullanıcı kayıt ve giriş mekanizmasına entegre ederken veri tabanı tarafında yardıma ihtiyacınız var mı?

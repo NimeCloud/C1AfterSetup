@@ -95,6 +95,17 @@ namespace C1AfterSetup.Steps
                 }
             }
 
+            // AuthKit.dll temizliği: App_Code/AuthKit kaynak kodu varsa,
+            // ~/bin/AuthKit.dll ile çakışmayı önlemek için DLL silinir.
+            // ("type exists in both assemblies" hatasını engeller.)
+            string authKitDll = context.ResolveSite(Path.Combine("bin", "AuthKit.dll"));
+            string authKitAppCode = context.ResolveSite(Path.Combine("App_Code", "AuthKit"));
+            if (File.Exists(authKitDll) && Directory.Exists(authKitAppCode))
+            {
+                File.Delete(authKitDll);
+                context.Log("  - AuthKit.dll silindi (~/bin/AuthKit.dll) — App_Code/AuthKit kaynak kodu ile çakışmayı önlemek için.");
+            }
+
             if (context.Mode == RunMode.Online)
             {
                 var monitor = new CompilationMonitor(context);

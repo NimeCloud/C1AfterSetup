@@ -213,6 +213,39 @@ namespace C1AfterSetup.Steps
             {
                 context.Log("  Web.config zaten istenen durumda (değişiklik gerekmedi).");
             }
+
+            // 6) System.Memory binding redirect: BCrypt.Net-Next 4.1.0.0 → System.Memory 4.0.5.0
+            //    gerektirir, ama NuGet'ten gelen DLL 4.0.1.1'dir.
+            //    Binding redirect ile uyumsuzluk giderilir.
+            {
+                XmlElement runtime = GetOrCreate(doc.DocumentElement, "runtime");
+                XmlElement assemblyBinding = GetOrCreate(runtime, "assemblyBinding",
+                    "urn:schemas-microsoft-com:asm.v1");
+
+                // Eski System.Memory redirect'lerini temizle (versiyon degismis olabilir)
+                RemoveDependentAssembly(assemblyBinding, "System.Memory");
+
+                XmlElement da = doc.CreateElement("dependentAssembly", "urn:schemas-microsoft-com:asm.v1");
+                XmlElement ai = doc.CreateElement("assemblyIdentity", "urn:schemas-microsoft-com:asm.v1");
+                ai.SetAttribute("name", "System.Memory");
+                ai.SetAttribute("publicKeyToken", "cc7b13ffcd2ddd51");
+                ai.SetAttribute("culture", "neutral");
+                da.AppendChild(ai);
+
+                XmlElement br = doc.CreateElement("bindingRedirect", "urn:schemas-microsoft-com:asm.v1");
+                br.SetAttribute("oldVersion", "0.0.0.0-4.0.5.0");
+                br.SetAttribute("newVersion", "4.0.1.2");
+                da.AppendChild(br);
+
+                assemblyBinding.AppendChild(da);
+                context.Log("  + bindingRedirect System.Memory 0.0.0.0-4.0.5.0 → 4.0.1.2");
+                changed = true;
+            }
+
+            // 7) Global.asax: API route'larini RegisterRoutes'a ekle
+            //    (auth/login, api/time vb. endpoint'lerin çalışması için gerekli)
+            PatchGlobalAsaxRoutes(context);
+
             return true;
         }
 
@@ -221,6 +254,51 @@ namespace C1AfterSetup.Steps
             context.Log("  - requestFiltering removeServerHeader=true");
             context.Log("  - httpProtocol/customHeaders clear/remove");
             context.Log("  - modules HeaderCleanupModule kaydı");
+        }
+
+        /// <summary>
+        /// Global.asax RegisterRoutes metoduna API route'larini ekler.
+        /// Idempotent: "AuthApi" route'u zaten varsa tekrar eklemez.
+        /// </summary>
+        private static void PatchGlobalAsaxRoutes(SetupContext context)
+        {
+            string globalAsaxPath = context.ResolveSite("Global.asax");
+            if (!File.Exists(globalAsaxPath))
+            {
+                context.Warn("  Global.asax bulunamadı, API route'ları eklenemedi.");
+                return;
+            }
+
+            string content = File.ReadAllText(globalAsaxPath, Encoding.UTF8);
+
+            // Idempotent: zaten AuthApi route'u varsa atla
+            if (content.Contains("AuthApi"))
+            {
+                context.Log("  = Global.asax API route'ları zaten mevcut.");
+                return;
+            }
+
+            // Routes.RegisterPageRoute(routes); satırından ÖNCE 3 route'u ekle
+            string marker = "Routes.RegisterPageRoute(routes);";
+            int idx = content.IndexOf(marker);
+            if (idx < 0)
+            {
+                context.Warn("  Global.asax'ta RegisterPageRoute bulunamadı, API route'ları eklenemedi.");
+                return;
+            }
+
+            string routeBlock = @"
+        // Modern REST API routes — registered BEFORE C1 page routes
+        // Auth route FIRST — more specific, must match before generic api/{action}
+        routes.Add(""AuthApi"", new Route(""api/auth/{action}"", new RouteValueDictionary(), new RouteValueDictionary(), new AuthRouteHandler()));
+        routes.Add(""Api"", new Route(""api/{action}"", new RouteValueDictionary(), new RouteValueDictionary(), new ApiRouteHandler()));
+        routes.Add(""ApiWithName"", new Route(""api/{action}/{name}"", new RouteValueDictionary(), new RouteValueDictionary(), new ApiRouteHandler()));
+
+        ";
+
+            content = content.Insert(idx, routeBlock);
+            File.WriteAllText(globalAsaxPath, content, Encoding.UTF8);
+            context.Log("  + Global.asax API route'ları eklendi (api/auth/*, api/*).");
         }
 
         private static XmlElement GetOrCreate(XmlElement parent, string name)
@@ -232,6 +310,58 @@ namespace C1AfterSetup.Steps
                 parent.AppendChild(el);
             }
             return el;
+        }
+
+        private static XmlElement GetOrCreate(XmlElement parent, string name, string ns)
+        {
+            XmlElement el = parent[name];
+            if (el == null)
+            {
+                foreach (XmlNode n in parent.ChildNodes)
+                {
+                    if (n is XmlElement && n.LocalName == name && n.NamespaceURI == ns)
+                    {
+                        el = (XmlElement)n;
+                        break;
+                    }
+                }
+                if (el == null)
+                {
+                    el = parent.OwnerDocument.CreateElement(name, ns);
+                    parent.AppendChild(el);
+                }
+            }
+            return el;
+        }
+
+        private static bool HasDependentAssembly(XmlElement assemblyBinding, string name)
+        {
+            foreach (XmlNode n in assemblyBinding.SelectNodes("dependentAssembly"))
+            {
+                if (n is XmlElement)
+                {
+                    var ai = ((XmlElement)n)["assemblyIdentity"];
+                    if (ai != null && ai.Attributes["name"] != null && ai.Attributes["name"].Value == name)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        private static void RemoveDependentAssembly(XmlElement assemblyBinding, string name)
+        {
+            var toRemove = new List<XmlNode>();
+            foreach (XmlNode n in assemblyBinding.SelectNodes("dependentAssembly"))
+            {
+                if (n is XmlElement)
+                {
+                    var ai = ((XmlElement)n)["assemblyIdentity"];
+                    if (ai != null && ai.Attributes["name"] != null && ai.Attributes["name"].Value == name)
+                        toRemove.Add(n);
+                }
+            }
+            foreach (var n in toRemove)
+                assemblyBinding.RemoveChild(n);
         }
 
         private static bool SetAttribute(XmlElement el, string name, string value)

@@ -200,6 +200,24 @@ namespace AuthKit.Authentication
         #region --- Login / Logout ---
 
         /// <summary>
+        /// Sadece credential doğrulaması yapar; cookie basmaz, token oluşturmaz.
+        /// Provider chain tarafından kullanılır.
+        /// </summary>
+        public static bool ValidateCredentialsOnly(string username, string password)
+        {
+            var user = FindUserByUsernameOrEmail(username);
+            if (user == null) return false;
+            if (user.IsTemplate) return false;
+            if (string.IsNullOrEmpty(user.PasswordHash)) return false;
+
+            bool isHashed = user.PasswordHash.StartsWith("$2");
+            if (isHashed)
+                return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+            else
+                return password == user.PasswordHash;
+        }
+
+        /// <summary>
         /// Login sayfasının C1 page GUID'i. Uygulama tarafında set edilmelidir.
         /// </summary>
         public static Guid LoginPageId { get; set; } = Guid.Empty;

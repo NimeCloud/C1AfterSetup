@@ -23,8 +23,32 @@
         }
         else
         {
-            result = AuthKit.Authentication.AuthenticationManager.Login(Request.Form["username"], Request.Form["password"],
-rememberMe);
+            var username = Request.Form["username"];
+            var password = Request.Form["password"];
+
+            // Provider Chain + Shadow User pattern:
+            // 1. Hangi provider'in kullaniciyi tanidigini bul (AuthKit → C1 CMS)
+            var userProvider = UserProviderRegistry.FindProvider(username, password);
+
+            if (userProvider != null)
+            {
+                // 2. Kullanici bilgisini al
+                var info = userProvider.GetUser(username);
+                if (info != null)
+                {
+                    // 3. C1 CMS kullanicisiysa AuthKit'te shadow hesap olustur
+                    LinkedUserManager.EnsureShadowUser(
+                        info.Username, info.Email, password, userProvider.Name);
+
+                    // 4. AuthKit ile giris yap (shadow user artik mevcut)
+                    result = AuthKit.Authentication.AuthenticationManager.Login(username, password, rememberMe);
+                }
+            }
+            else
+            {
+                // Provider bulunamadi – dogrudan AuthKit Login'i dene (fallback)
+                result = AuthKit.Authentication.AuthenticationManager.Login(username, password, rememberMe);
+            }
         }
     }
 
@@ -80,72 +104,76 @@ System.Collections.Generic.Dictionary<string, object>;
     </div>
     <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
     <div class="d-flex justify-content-between mt-3 small">
-        <a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")">Kayıt Ol</a>
-        <a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")">Şifremi Unuttum</a>
-    </div>
-</form>
+        <a
+            href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")">Kayıt
+            Ol</a>
+            <a
+                href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")">Şifremi
+                Unuttum</a>
+            </div>
+        </form>
 
-@if (!string.IsNullOrEmpty(googleClientId) || !string.IsNullOrEmpty(facebookAppId))
-{
-    <div class="d-flex align-items-center my-3">
-        <hr class="flex-grow-1" />
-        <span class="px-2 text-muted small">veya</span>
-        <hr class="flex-grow-1" />
-    </div>
-    <div class="d-grid gap-2">
+        @if (!string.IsNullOrEmpty(googleClientId) || !string.IsNullOrEmpty(facebookAppId))
+        {
+            <div class="d-flex align-items-center my-3">
+                <hr class="flex-grow-1" />
+                <span class="px-2 text-muted small">veya</span>
+                <hr class="flex-grow-1" />
+            </div>
+            <div class="d-grid gap-2">
+                @if (!string.IsNullOrEmpty(googleClientId))
+                {
+                    <div id="googleBtn" class="text-center"></div>
+                }
+                @if (!string.IsNullOrEmpty(facebookAppId))
+                {
+                    <button type="button" class="btn btn-outline-primary w-100" onclick="authkitFacebookLogin();">
+                        Facebook ile Giriş Yap
+                    </button>
+                }
+            </div>
+        }
+
         @if (!string.IsNullOrEmpty(googleClientId))
         {
-            <div id="googleBtn" class="text-center"></div>
+            <script src="https://accounts.google.com/gsi/client" async="async" defer="defer"></script>
         }
         @if (!string.IsNullOrEmpty(facebookAppId))
         {
-            <button type="button" class="btn btn-outline-primary w-100" onclick="authkitFacebookLogin();">
-                Facebook ile Giriş Yap
-            </button>
+            var fbSdkUrl = "https://connect.facebook.net/tr_TR/sdk.js#xfbml=1&version=v18.0&appId=" + facebookAppId;
+            <script async="async" defer="defer" crossorigin="anonymous" src="@fbSdkUrl"></script>
         }
-    </div>
-}
 
-@if (!string.IsNullOrEmpty(googleClientId))
-{
-    <script src="https://accounts.google.com/gsi/client" async="async" defer="defer"></script>
-}
-@if (!string.IsNullOrEmpty(facebookAppId))
-{
-    var fbSdkUrl = "https://connect.facebook.net/tr_TR/sdk.js#xfbml=1&version=v18.0&appId=" + facebookAppId;
-    <script async="async" defer="defer" crossorigin="anonymous" src="@fbSdkUrl"></script>
-}
+        <script>
+            //<![CDATA[
+            var authkitGoogleClientId = '@googleClientId';
+            var authkitFacebookAppId = '@facebookAppId';
 
-<script>
-    //<![CDATA[
-    var authkitGoogleClientId = '@googleClientId';
-    var authkitFacebookAppId = '@facebookAppId';
+            function authkitSubmitOAuth(provider, credential) {
+            document.getElementById('oauthProvider').value = provider;
+            document.getElementById('oauthCredential').value = credential;
+            document.getElementById('loginForm').submit();
+            }
 
-    function authkitSubmitOAuth(provider, credential) {
-    document.getElementById('oauthProvider').value = provider;
-    document.getElementById('oauthCredential').value = credential;
-    document.getElementById('loginForm').submit();
-    }
+            function authkitGoogleCallback(response) {
+            if (response && response.credential) {
+            authkitSubmitOAuth('google', response.credential);
+            }
+            }
 
-    function authkitGoogleCallback(response) {
-    if (response && response.credential) {
-    authkitSubmitOAuth('google', response.credential);
-    }
-    }
+            function authkitFacebookLogin() {
+            FB.login(function (response) {
+            if (response.authResponse) {
+            authkitSubmitOAuth('facebook', response.authResponse.accessToken);
+            }
+            }, { scope: 'email' });
+            }
 
-    function authkitFacebookLogin() {
-    FB.login(function (response) {
-    if (response.authResponse) {
-    authkitSubmitOAuth('facebook', response.authResponse.accessToken);
-    }
-    }, { scope: 'email' });
-    }
-
-    window.addEventListener('load', function () {
-    if (authkitGoogleClientId && window.google && google.accounts && google.accounts.id) {
-    google.accounts.id.initialize({ client_id: authkitGoogleClientId, callback: authkitGoogleCallback });
-    google.accounts.id.renderButton(document.getElementById('googleBtn'), { theme: 'outline', size: 'large', width: 300 });
-    }
-    });
-    //]]>
-</script>
+            window.addEventListener('load', function () {
+            if (authkitGoogleClientId && window.google && google.accounts && google.accounts.id) {
+            google.accounts.id.initialize({ client_id: authkitGoogleClientId, callback: authkitGoogleCallback });
+            google.accounts.id.renderButton(document.getElementById('googleBtn'), { theme: 'outline', size: 'large', width: 300 });
+            }
+            });
+            //]]>
+        </script>
