@@ -34,7 +34,7 @@
         <ul class="nav nav-pills user-profile-tab" id="pills-tab" role="tablist">
             <li class="nav-item" role="presentation">
                 <button
-                    class="nav-link position-relative rounded-0 d-flex align-items-center justify-content-center bg-transparent fs-3 py-3 active"
+                    class="nav-link position-relative rounded-0 d-flex align-items-center justify-content-center fs-3 py-3 active"
                     id="pills-real-users-tab" data-bs-toggle="pill" data-bs-target="#pills-real-users" type="button"
                     role="tab">
                     <i class="ti ti-user-circle me-2 fs-6"></i>
@@ -43,7 +43,7 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button
-                    class="nav-link position-relative rounded-0 d-flex align-items-center justify-content-center bg-transparent fs-3 py-3"
+                    class="nav-link position-relative rounded-0 d-flex align-items-center justify-content-center fs-3 py-3"
                     id="pills-template-users-tab" data-bs-toggle="pill" data-bs-target="#pills-template-users"
                     type="button" role="tab">
                     <i class="ti ti-file-text me-2 fs-6"></i>
@@ -92,6 +92,30 @@
 </div>
 
 <style>
+    /* Tab styling: inactive tabs get a visible background + border so they don't blend into
+       the white card; the active tab stands out in blue. */
+    .user-profile-tab .nav-link {
+        background-color: #f1f3f5;
+        color: #495057;
+        border: 1px solid #dee2e6;
+    }
+
+    .user-profile-tab .nav-link:hover {
+        background-color: #e2e6ea;
+        color: #212529;
+    }
+
+    .user-profile-tab .nav-link.active,
+    .user-profile-tab .nav-link.active:hover {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+        color: #fff;
+    }
+
+    .user-profile-tab .nav-link.active i {
+        color: #fff;
+    }
+
     .dataTables_wrapper .dataTables_info,
     .dataTables_wrapper .dataTables_paginate {
         margin-top: 1.5rem;
