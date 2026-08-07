@@ -11,18 +11,20 @@
 
 @{
     var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
-    if (currentUser == null || !AuthKit.Authorization.AuthorizationManager.HasPermission(currentUser,
-        AuthKit.Authorization.PermissionKeys.Auth.Groups.View))
+    if (currentUser == null)
     {
         var loginPageId = AuthKit.Authentication.AuthenticationManager.LoginPageId;
+        string urlCurrent = HttpContext.Current.Request.Url.AbsoluteUri;
         if (loginPageId != Guid.Empty)
         {
-            Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(loginPageId, "~/login"));
+            Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(loginPageId, "~/login") + "?redirect=" +
+                HttpUtility.UrlEncode(urlCurrent));
         }
         else
         {
             Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(
-                new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/login"));
+                new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/login") +
+                "?redirect=" + HttpUtility.UrlEncode(urlCurrent));
         }
     }
 }

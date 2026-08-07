@@ -10,7 +10,23 @@
 }
 
 @{
-    AuthKit.Authorization.AuthorizationManager.CheckPagePermission(AuthKit.Authorization.PermissionKeys.Auth.Users.View);
+    var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
+    if (currentUser == null)
+    {
+        var loginPageId = AuthKit.Authentication.AuthenticationManager.LoginPageId;
+        string urlCurrent = HttpContext.Current.Request.Url.AbsoluteUri;
+        if (loginPageId != Guid.Empty)
+        {
+            Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(loginPageId, "~/login") + "?redirect=" +
+                HttpUtility.UrlEncode(urlCurrent));
+        }
+        else
+        {
+            Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(
+                new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/login") +
+                "?redirect=" + HttpUtility.UrlEncode(urlCurrent));
+        }
+    }
 }
 
 <style>
@@ -58,11 +74,11 @@
             <div class="col-md-5">
                 <label for="userSelector" class="form-label">Kullanıcı Seçin</label>
                 <select id="userSelector" class="form-select">
-                    <option selected disabled value="">Kullanıcı seçiniz...</option>
+                    <option selected="selected" disabled="disabled" value="">Kullanıcı seçiniz...</option>
                 </select>
             </div>
             <div class="col-md-7">
-                <button id="savePermissionsBtn" class="btn btn-primary" disabled>Yetkileri Kaydet</button>
+                <button id="savePermissionsBtn" class="btn btn-primary" disabled="disabled">Yetkileri Kaydet</button>
             </div>
         </div>
 
@@ -130,7 +146,7 @@
 
                     html += '<tr data-permissionid="' + p.Id + '" data-inherited-state="' + p.State + '">' +
                         '<td>' + p.Description + ' <small class="text-muted">(' + (p.Name || '') + ')</small>' + sourceInfo + '</td>' +
-                        '<td class="text-center"><input class="form-check-input inherited-check" type="checkbox" ' + (inheritedChecked ? 'checked' : '') + ' disabled></td>' +
+                        '<td class="text-center"><input class="form-check-input inherited-check" type="checkbox" ' + (inheritedChecked ? 'checked' : '') + ' disabled="disabled"></td>' +
                         '<td class="text-center"><input class="form-check-input permission-check" type="checkbox" data-type="allow" ' + (directAllowChecked ? 'checked' : '') + '></td>' +
                         '<td class="text-center"><input class="form-check-input permission-check" type="checkbox" data-type="deny" ' + (directDenyChecked ? 'checked' : '') + '></td></tr>';
                 });

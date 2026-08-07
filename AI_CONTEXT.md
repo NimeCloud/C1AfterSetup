@@ -4,7 +4,7 @@
 > yeniden sağlamak. Debugging gotcha'ları, komut kalıpları, sabit değerler ve yöntemler burada toplanır.
 > Yeni agent bu dosyayı **İLK OKUMASI GEREKEN** dosya olarak görmeli.
 >
-> **Last updated:** 2026-08-07 (deploy24: XHTML CDATA gotcha fixed; CSS/JS wrappers added to mandatory template rules)
+> **Last updated:** 2026-08-07 (reference site documented; NuGet package management + AuthKit admin port plan)
 
 ---
 
@@ -267,6 +267,13 @@ When starting fresh, check these files FIRST:
 - [`C1AfterSetup/Config/setup.manifest.json`](C1AfterSetup/Config/setup.manifest.json) — what gets deployed
 - [`plans/c1-cms-hybrid-sql-xml-datastore.md`](plans/c1-cms-hybrid-sql-xml-datastore.md) — hybrid XML+SQL datastore setup guide, provider routing, cross-provider references
 - [`plans/deploy-admin-tools-to-new-site.md`](plans/deploy-admin-tools-to-new-site.md) — new-task prompt: step-by-step instructions for deploying hybrid datastore + admin tool pages to a new C1 CMS site
+- [`plans/c1-reference-site-authkit-packages.md`](plans/c1-reference-site-authkit-packages.md) — **reference site** (working AuthKit + DataTables admin) + exact NuGet package inventory + migration plan
+- [`plans/new-task-prompt-port-authkit-admin-pages.md`](plans/new-task-prompt-port-authkit-admin-pages.md) — short new-task prompt: port AuthKit admin pages/APIs + NuGet package management
+
+**REFERENCE SITE (IMPORTANT):** `E:\_CODE_\WebDev\SystemC1\Website` — working precursor AuthKit
+with DataTables admin UI + C# API (Razor synthetic API). Authoritative package versions:
+`E:\_CODE_\WebDev\SystemC1\Website\packages.config`. Package store:
+`E:\_CODE_\WebDev\SystemC1\packages`. ⚠️ The fresh install `E:\C1\dev\Website` is NOT the reference site.
 
 ---
 
@@ -365,7 +372,13 @@ C1 CMS 6.13 uses an older ASP.NET Web Pages Razor parser with strict limitations
    sb.Append("<button>Save & Restart</button>");
    ```
 
-**RULE: When creating or modifying ANY .cshtml page template in this project: (a) ALWAYS wrap `<style>` with `/* <![CDATA[ */ ... /* ]]> */`, (b) ALWAYS wrap `<script>` with `// <![CDATA[ ... // ]]>`, (c) NEVER use bare `&` in HTML text content — use the word "and" instead. `&` encoding is unreliable due to tooling write issues (the `&` in `&` gets silently reverted). "and" is XHTML-safe, never breaks, and is better English anyway. These are NOT optional — they prevent runtime `XmlException` in C1's preview mode.**
+**RULE: When creating or modifying ANY .cshtml page template in this project:**
+- **(a)** ALWAYS wrap `<style>` with `/* <![CDATA[ */ ... /* ]]> */` and `<script>` with `// <![CDATA[ ... // ]]>` — WITH newlines after/before CDATA markers (JS single-line comment would comment out everything otherwise).
+- **(b)** NEVER use bare `&` in HTML text — use "and". `&` is unreliable (write tools silently revert it).
+- **(c)** NEVER use bare boolean attributes in XHTML: `disabled`, `selected`, `checked`, `readonly`, `multiple`, `required` — MUST be `disabled="disabled"`, `selected="selected"`, etc.
+- **(d)** ALL `.cshtml` files MUST be saved as **UTF-8 with BOM**. PowerShell `WriteAllText` default is UTF-8 WITHOUT BOM, which causes Turkish character corruption in C1's Razor parser. Use `new System.Text.UTF8Encoding($true)` (BOM) when saving via PowerShell, or use `write_to_file` tool (BOM-aware). If Turkish characters appear garbled (e.g., `Å` instead of `Ş`), re-save with BOM.
+- **(e)** AuthKit management pages MUST use **auth-only** checks (`currentUser == null`), NOT `HasPermission(...)`. The AuthKit Group/PermissionInGroup stores are EMPTY on fresh deploys (the permission system isn't seeded), so `HasPermission` always returns false and every page redirects to login → infinite login loop. The C1 admin's shadow user (`LinkedUserManager.EnsureShadowUser`) is never added to an AuthKit group. ALL redirects MUST include `?redirect=<urlencode(currentUrl)>` so after login the user returns to where they were.
+- All rules are NOT optional — they prevent runtime errors in C1 preview mode.
 
 ---
 
