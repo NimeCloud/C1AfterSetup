@@ -91,6 +91,45 @@ namespace AuthKit.Authorization
                 DataFacade.AddNew(newGroup);
                 dbGroups.Add(groupName);
             }
+
+            // Grant every permission to the System.Administrators group so its effective
+            // permissions are visible in the Group/User permission pages (idempotent).
+            GrantAllPermissionsToAdministrators();
+        }
+
+        private static string SystemAdministratorsGroupName()
+        {
+            string value = null;
+            try { value = GroupKeys.System.Administrators; } catch { }
+            return string.IsNullOrWhiteSpace(value) ? "System.Administrators" : value;
+        }
+
+        private void GrantAllPermissionsToAdministrators()
+        {
+            string adminName = SystemAdministratorsGroupName();
+
+            var adminGroup = DataFacade.GetData<AuthKit.Data.Authorization.Group>()
+                .FirstOrDefault(g => g.GroupName.Equals(adminName, StringComparison.OrdinalIgnoreCase));
+            if (adminGroup == null) return;
+
+            string adminGroupId = adminGroup.Id;
+            var allPermissions = DataFacade.GetData<AuthKit.Data.Authorization.Permission>().ToList();
+
+            var existingGrants = new HashSet<string>(
+                DataFacade.GetData<AuthKit.Data.Authorization.PermissionInGroup>()
+                    .Where(p => p.RefGroupId == adminGroupId)
+                    .Select(p => p.RefPermissionId));
+
+            foreach (var perm in allPermissions)
+            {
+                if (existingGrants.Contains(perm.Id)) continue;
+
+                var grant = DataFacade.BuildNew<AuthKit.Data.Authorization.PermissionInGroup>();
+                grant.RefGroupId = adminGroupId;
+                grant.RefPermissionId = perm.Id;
+                grant.IsAllowed = true;
+                DataFacade.AddNew(grant);
+            }
         }
 
         #region Internal helpers
