@@ -16,6 +16,7 @@ Built for C1 CMS 6.x on .NET Framework 4.8 (Windows). No third-party NuGet depen
   - **Default Data Provider Selector** — scan providers, view/change the default dynamic-type provider.
   - **Datatype Migrator** — list generated types with their current provider, selectively migrate types (and data) between XML and SQL using `DataProviderCopier`.
 - **Header cleanup** — optionally removes `Server` and custom response headers via `Web.config`.
+- **Optional packages inventory** — the extra NuGet/C1 packages present in the reference site but **not** required by AuthKit are documented (not deployed) in [`C1AfterSetup/Config/optional.packages.json`](C1AfterSetup/Config/optional.packages.json). Install them later from C1 Console → Packages when a feature needs them (see [Optional packages](#optional-packages)).
 
 ## Requirements
 
@@ -102,6 +103,53 @@ This works on both fresh (first-time setup) and already-initialized sites, verif
 
 As a fast path, `-capture` saves a type-containing `Composite.Generated.dll` into `sources\generated\` and later deploys ship it straight into `~/bin` (skipping the compile step).
 
+## Required packages (auto-deployed)
+
+These are the **mandatory** AuthKit dependency DLLs that the pipeline ships automatically
+(from [`sources/bin`](C1AfterSetup/sources/bin) per `binDependencies` in
+[`setup.manifest.json`](C1AfterSetup/Config/setup.manifest.json)). Versions are **pinned** to the
+reference site's working combination — never upgrade them blindly (see
+[`plans/c1-reference-site-authkit-packages.md`](plans/c1-reference-site-authkit-packages.md)).
+
+| DLL | Package (pinned) | Target framework |
+|---|---|---|
+| `BCrypt.Net-Next.dll` | `BCrypt.Net-Next 4.1.0` | net48 |
+| `Newtonsoft.Json.dll` | `Newtonsoft.Json 13.0.3` | net45 |
+| `Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll` | `Microsoft.CodeDom.Providers.DotNetCompilerPlatform 2.0.1` | net45 |
+| `System.Memory.dll` | `System.Memory 4.6.3` | net462 |
+| `System.Buffers.dll` | `System.Buffers 4.6.1` | net462 |
+| `System.Numerics.Vectors.dll` | `System.Numerics.Vectors 4.6.1` | net462 |
+| `System.Runtime.CompilerServices.Unsafe.dll` | `System.Runtime.CompilerServices.Unsafe 6.1.2` | net462 |
+| `System.Threading.Tasks.Extensions.dll` | `System.Threading.Tasks.Extensions 4.6.0` | net462 |
+| `System.ValueTuple.dll` | `System.ValueTuple 4.5.0` | net47 |
+
+The pipeline also deploys the Roslyn compiler folder (`roslyn/`) needed by
+`Microsoft.CodeDom.Providers.DotNetCompilerPlatform`, and `Web.config` gets the matching
+**binding redirects** (Newtonsoft.Json → 13.0.0.0, System.Memory → 4.0.5.0, etc.) so C1's own
+components (e.g. WampRouter, built against Newtonsoft.Json 6.0.0.0) resolve the pinned versions.
+
+## Optional packages (NOT auto-deployed)
+
+The pipeline only ships the **AuthKit-required** DLLs above. The reference site
+(`E:\_CODE_\WebDev\SystemC1\Website`) carries **many more** packages that this tool deliberately
+does **not** auto-deploy — they are C1 CMS packages you can install/upgrade later from
+**C1 Console → Packages** (or NuGet) when a feature needs them. Full inventory with exact pinned versions:
+
+> [`C1AfterSetup/Config/optional.packages.json`](C1AfterSetup/Config/optional.packages.json)
+
+| Group | Packages (pinned) | What it adds |
+|---|---|---|
+| **Google OAuth** | `Google.Apis 1.71.0`, `Google.Apis.Auth 1.71.0`, `Google.Apis.Core 1.71.0`, `Google.Apis.Oauth2.v2 1.68.0.1869` | Google sign-in for AuthKit OAuth (optional; email/password works without it) |
+| **E-mail (SMTP)** | `MailKit 4.13.0`, `MimeKit 4.15.1`, `BouncyCastle.Cryptography 2.6.2`, `Portable.BouncyCastle 1.8.1.3`, `SharpZipLib 1.4.2` | Sending e-mail (SMTP service) |
+| **Scheduled Tasks (Hangfire)** | `Hangfire.CompositeC1 1.6.20`, `Hangfire.Core 1.8.14`, `CompositeC1.ScheduledTasks 0.5.1`, `Common.Logging` | Background/scheduled jobs |
+| **C1 Contributions** | `CompositeC1Contrib.Core 0.9.0` | C1 contrib utilities |
+| **Real-time / Messaging** | `MQTTnet 4.3.6.1152`, `Microsoft.AspNet.SignalR.Core 2.4.3`, `Microsoft.Owin* 4.2.3`/`2.1.0`, `Owin 1.0`, `WampSharp 18.3.1` family | MQTT / SignalR / WAMP push (used by the LocaThor app, not AuthKit) |
+| **C1 Search** | `Orckestra.Search`, `Orckestra.Search.LuceneNET`, `Lucene.Net*`, `BoboBrowse.Net`, `C5` | C1 CMS search engine |
+| **JSON Bson** | `Newtonsoft.Json.Bson 1.0.2` | BSON serialization (rare) |
+| **.NET Standard facades** | `NETStandard.Library 1.6.1` family (`System.*` 4.3.0 shims) | Transitive deps, resolved automatically by NuGet |
+
+> ⚠️ **Do NOT copy these DLLs into `sources/bin` blindly** — several are C1 packages that must be installed via C1's package system (they register types, functions, and UI). Version pinning source of truth: `E:\_CODE_\WebDev\SystemC1\Website\packages.config`.
+
 ## Resumability
 
 - Each step implements `Verify(context)` and `Fingerprint(context)`.
@@ -184,6 +232,7 @@ C1AfterSetup/
 ├─ SetupState.cs             # per-site progress checkpoint (state.json)
 ├─ FileSyncUtil.cs           # MD5 copy-if-different + fingerprints
 ├─ Config/setup.manifest.json# what to deploy and where
+├─ Config/optional.packages.json# optional C1/NuGet packages inventory (NOT deployed)
 ├─ Steps/                    # ISetupStep implementations
 ├─ Detect/                   # site probe + compilation monitor
 └─ sources/                  # deployed payload (AuthKit, KeyTreeStore, DataMetaData, …)

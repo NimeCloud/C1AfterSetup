@@ -1,33 +1,34 @@
-# AuthKit Yönetim Sayfaları
+# AuthKit Management Pages
 
-Bu dizin, AuthKit paketiyle birlikte gelen hazır yönetim sayfalarını içerir.
-Tüm sayfa şablonları C1 CMS Layout perspektifinde gruplu görünmesi için `AuthKit.` önekiyle isimlendirilmiştir.
+This directory contains the ready-made management pages shipped with the AuthKit package.
+All page templates are prefixed with `AuthKit.` so they appear grouped in the C1 CMS Layout
+perspective.
 
-## Orijinal Sayfalardan Yapılan Değişiklikler
+## Changes from the Original Pages
 
-| Orijinal (Araç Takip) | AuthKit (Temiz) |
+| Original (Fleet Tracking) | AuthKit (Clean) |
 |---|---|
 | `Auth.Authentication.*` | `AuthKit.Authentication.*` |
 | `Auth.Authorization.*` | `AuthKit.Authorization.*` |
 | `Auth.Navigation.PageIds.Login` (hardcoded GUID) | `AuthKit.Authentication.AuthenticationManager.LoginPageId` |
 | `C1.UrlHelper.GetUrlFromPageId` | `AuthKit.C1.C1UrlHelper.GetUrlFromPageId` |
-| `PermissionKeys.LocaFleet.*` | KALDIRILDI (araç takip spesifik) |
-| Sabit login GUID'leri (`870ff503-...`) | KeyTreeStoreManager üzerinden yapılandırılabilir |
+| `PermissionKeys.LocaFleet.*` | REMOVED (fleet-tracking specific) |
+| Hardcoded login GUIDs (`870ff503-...`) | Configurable via `KeyTreeStoreManager` |
 
-## CSS/JS Bağımlılıkları
+## CSS/JS Dependencies
 
-`AuthKit.PanelLayout.cshtml` ana layout olup Bootstrap 5, jQuery, DataTables (Editor/Buttons/Select),
-SweetAlert2 ve Tabler Icons kütüphanelerini CDN üzerinden içerir. Bu sayede paket kendi kendine yeterlidir;
-ayrıca harici tema dosyalarına bağımlılık yoktur.
+`AuthKit.PanelLayout.cshtml` is the main layout and pulls in Bootstrap 5, jQuery,
+DataTables (Editor/Buttons/Select), SweetAlert2, and Tabler Icons from CDNs. This makes the
+package self-contained; there is no dependency on external theme files.
 
-## Sayfa Listesi
+## Page List
 
-| Sayfa | Amaç |
+| Page | Purpose |
 |---|---|
-| `AuthKit.SetupPage.cshtml` | Kurulum sayfası - "Sayfaları Oluştur" ile 9 sayfayı otomatik açar |
-| `AuthKit.PanelLayout.cshtml` | Sidebar'lı yönetim paneli ana layout'u |
-| `AuthKit.AuthLayout.cshtml` | Login/Register/Şifremi Unuttum/Şifre Sıfırla/Çıkış sayfaları için layout |
-| `AuthKit.UserManagementPage.cshtml` | Kullanıcı listesi, ekle/sil/düzenle, grup atama |
-| `AuthKit.GroupManagementPage.cshtml` | Grup listesi, ekle/sil/düzenle, üye yönetimi |
-| `AuthKit.GroupPermissionPage.cshtml` | Grup bazlı Allow/Deny yetki matrisi |
-| `AuthKit.UserPermissionPage.cshtml` | Kullanıcı bazlı Allow/Deny + inheritance görünümü |
+| `AuthKit.SetupPage.cshtml` | Setup page — "Create Pages" auto-creates the 9 pages |
+| `AuthKit.PanelLayout.cshtml` | Main sidebar admin panel layout |
+| `AuthKit.AuthLayout.cshtml` | Layout for Login/Register/Forgot Password/Reset Password/Logout pages |
+| `AuthKit.UserManagementPage.cshtml` | User list, add/delete/edit, group assignment |
+| `AuthKit.GroupManagementPage.cshtml` | Group list, add/delete/edit, member management |
+| `AuthKit.GroupPermissionPage.cshtml` | Group-based Allow/Deny permission matrix |
+| `AuthKit.UserPermissionPage.cshtml` | User-based Allow/Deny + inheritance view |

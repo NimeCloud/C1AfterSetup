@@ -71,7 +71,13 @@ namespace C1AfterSetup.Steps
                 }
             }
 
-            // DataMetaData (kaynakta eşleşen her dosya, içerik eşitliği) — PendingDataTypes'a konuşlandırılır
+            // DataMetaData — GUID tabanlı varlık kontrolü (içerik eşitliği DEĞİL).
+            // CompileGeneratedTypesStep siteyi headless başlatıp tipleri işlediğinde C1, DataMetaData
+            // XML'lerini kendi formatında yeniden yazar; bu yüzden içerik karşılaştırması her zaman
+            // yanlış-pozitif "EKSİK/ESKİ" üretir. Dosya adı (TipAdı <GUID>.xml) kaynakla aynı kalır.
+            // İki konum kontrol edilir:
+            //   - PendingDataTypes: DeployDataTypesStep tarafından konuşlandırılır (henüz işlenmemiş)
+            //   - DataMetaData:     CompileGeneratedTypesStep tipleri kaydettikten sonra taşınır
             string srcDataMeta = context.ResolveSource("DataMetaData");
             if (Directory.Exists(srcDataMeta))
             {
@@ -79,9 +85,13 @@ namespace C1AfterSetup.Steps
                 {
                     foreach (string src in Directory.GetFiles(srcDataMeta, Path.GetFileName(t.File), SearchOption.TopDirectoryOnly))
                     {
-                        string dst = context.ResolveSite(Path.Combine("App_Data", "Composite", "PendingDataTypes", Path.GetFileName(src)));
-                        if (File.Exists(dst) && FileSyncUtil.FilesEqual(src, dst)) ok++;
-                        else { context.Error("  EKSİK/ESKİ DataMetaData: " + Path.GetFileName(src)); missing++; }
+                        string name = Path.GetFileName(src);
+                        string dstPending = context.ResolveSite(Path.Combine("App_Data", "Composite", "PendingDataTypes", name));
+                        string dstRegistered = context.ResolveSite(Path.Combine("App_Data", "Composite", "DataMetaData", name));
+                        bool okPending = File.Exists(dstPending);
+                        bool okRegistered = File.Exists(dstRegistered);
+                        if (okPending || okRegistered) ok++;
+                        else { context.Error("  EKSİK DataMetaData: " + name); missing++; }
                     }
                 }
             }

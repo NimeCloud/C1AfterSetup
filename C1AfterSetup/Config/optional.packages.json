@@ -1,0 +1,572 @@
+{
+    "_comment": "OPTIONAL C1 CMS / NuGet packages. NOT deployed by default. These are present in the reference site (E:\\_CODE_\\WebDev\\SystemC1) but NOT required by AuthKit. Install/upgrade them later from C1 Console -> Packages or via NuGet when a feature needs them. Source of truth for versions: E:\\_CODE_\\WebDev\\SystemC1\\Website\\packages.config. This file is an inventory only - it is NOT read by the deploy pipeline.",
+    "enabled": false,
+    "groups": [
+        {
+            "name": "Google OAuth",
+            "note": "Google sign-in for AuthKit OAuth (LoginWithGoogle). Requires Google.Apis + OAuth helper config. Optional - AuthKit works with email/password without it.",
+            "packages": [
+                {
+                    "id": "Google.Apis",
+                    "version": "1.71.0",
+                    "dlls": [
+                        "Google.Apis.dll"
+                    ]
+                },
+                {
+                    "id": "Google.Apis.Auth",
+                    "version": "1.71.0",
+                    "dlls": [
+                        "Google.Apis.Auth.dll"
+                    ]
+                },
+                {
+                    "id": "Google.Apis.Core",
+                    "version": "1.71.0",
+                    "dlls": [
+                        "Google.Apis.Core.dll"
+                    ]
+                },
+                {
+                    "id": "Google.Apis.Oauth2.v2",
+                    "version": "1.68.0.1869",
+                    "dlls": [
+                        "Google.Apis.Oauth2.v2.dll"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "E-mail (SMTP)",
+            "note": "MailKit/MimeKit for sending e-mail (SMTP service). Optional - AuthKit can use System.Net.Mail instead.",
+            "packages": [
+                {
+                    "id": "MailKit",
+                    "version": "4.13.0",
+                    "dlls": [
+                        "MailKit.dll"
+                    ]
+                },
+                {
+                    "id": "MimeKit",
+                    "version": "4.15.1",
+                    "dlls": [
+                        "MimeKit.dll"
+                    ]
+                },
+                {
+                    "id": "BouncyCastle.Cryptography",
+                    "version": "2.6.2",
+                    "dlls": [
+                        "BouncyCastle.Cryptography.dll"
+                    ]
+                },
+                {
+                    "id": "Portable.BouncyCastle",
+                    "version": "1.8.1.3",
+                    "dlls": []
+                },
+                {
+                    "id": "SharpZipLib",
+                    "version": "1.4.2",
+                    "dlls": [
+                        "ICSharpCode.SharpZipLib.dll"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Scheduled Tasks (Hangfire)",
+            "note": "Hangfire integration for C1 scheduled tasks. Optional - only needed if the site uses background jobs.",
+            "packages": [
+                {
+                    "id": "Hangfire.CompositeC1",
+                    "version": "1.6.20",
+                    "dlls": [
+                        "Hangfire.CompositeC1.dll"
+                    ]
+                },
+                {
+                    "id": "Hangfire.Core",
+                    "version": "1.8.14",
+                    "dlls": [
+                        "Hangfire.Core.dll"
+                    ]
+                },
+                {
+                    "id": "Common.Logging",
+                    "version": "",
+                    "dlls": [
+                        "Common.Logging.dll",
+                        "Common.Logging.Core.dll"
+                    ]
+                },
+                {
+                    "id": "CompositeC1.ScheduledTasks",
+                    "version": "0.5.1",
+                    "dlls": [
+                        "CompositeC1Contrib.ScheduledTasks.dll"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "C1 Contributions",
+            "note": "Optional C1 contrib package.",
+            "packages": [
+                {
+                    "id": "CompositeC1Contrib.Core",
+                    "version": "0.9.0",
+                    "dlls": [
+                        "CompositeC1Contrib.Core.dll"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Real-time / Messaging (MQTT, SignalR, WampSharp)",
+            "note": "Real-time push features (LocaThor app uses these). NOT needed for AuthKit. Install only if the site adds MQTT/SignalR/WAMP features.",
+            "packages": [
+                {
+                    "id": "MQTTnet",
+                    "version": "4.3.6.1152",
+                    "dlls": [
+                        "MQTTnet.dll"
+                    ]
+                },
+                {
+                    "id": "Microsoft.AspNet.SignalR.Core",
+                    "version": "2.4.3",
+                    "dlls": [
+                        "Microsoft.AspNet.SignalR.Core.dll"
+                    ]
+                },
+                {
+                    "id": "Microsoft.Owin",
+                    "version": "4.2.3",
+                    "dlls": [
+                        "Microsoft.Owin.dll"
+                    ]
+                },
+                {
+                    "id": "Microsoft.Owin.Host.SystemWeb",
+                    "version": "4.2.3",
+                    "dlls": [
+                        "Microsoft.Owin.Host.SystemWeb.dll"
+                    ]
+                },
+                {
+                    "id": "Microsoft.Owin.Hosting",
+                    "version": "4.2.3",
+                    "dlls": [
+                        "Microsoft.Owin.Hosting.dll"
+                    ]
+                },
+                {
+                    "id": "Microsoft.Owin.Security",
+                    "version": "2.1.0",
+                    "dlls": [
+                        "Microsoft.Owin.Security.dll"
+                    ]
+                },
+                {
+                    "id": "Owin",
+                    "version": "1.0",
+                    "dlls": [
+                        "Owin.dll",
+                        "ForOwinStartup.dll"
+                    ]
+                },
+                {
+                    "id": "WampSharp",
+                    "version": "18.3.1",
+                    "dlls": []
+                },
+                {
+                    "id": "WampSharp.NewtonsoftJson",
+                    "version": "18.3.1",
+                    "dlls": [
+                        "WampSharp.NewtonsoftJson.dll"
+                    ]
+                },
+                {
+                    "id": "WampSharp.WebSockets",
+                    "version": "18.3.1",
+                    "dlls": [
+                        "WampSharp.WebSockets.dll"
+                    ]
+                },
+                {
+                    "id": "WampSharp.AspNet.WebSockets.Server",
+                    "version": "18.3.1",
+                    "dlls": [
+                        "WampSharp.AspNet.WebSockets.Server.dll"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "C1 Search (Lucene / Orckestra)",
+            "note": "C1 CMS search engine components. These ship with the reference site; the fresh C1 install may add them via the Search package. Optional.",
+            "packages": [
+                {
+                    "id": "Orckestra.Search",
+                    "version": "(C1 core)",
+                    "dlls": [
+                        "Orckestra.Search.dll"
+                    ]
+                },
+                {
+                    "id": "Orckestra.Search.LuceneNET",
+                    "version": "(C1 core)",
+                    "dlls": [
+                        "Orckestra.Search.LuceneNET.dll"
+                    ]
+                },
+                {
+                    "id": "Lucene.Net",
+                    "version": "(C1 core)",
+                    "dlls": [
+                        "Lucene.Net.dll"
+                    ]
+                },
+                {
+                    "id": "Lucene.Net.Contrib",
+                    "version": "(C1 core)",
+                    "dlls": [
+                        "Lucene.Net.Contrib.Analyzers.dll",
+                        "Lucene.Net.Contrib.Highlighter.dll",
+                        "Lucene.Net.Contrib.Memory.dll",
+                        "Lucene.Net.Contrib.Snowball.dll"
+                    ]
+                },
+                {
+                    "id": "BoboBrowse.Net",
+                    "version": "(C1 core)",
+                    "dlls": [
+                        "BoboBrowse.Net.dll"
+                    ]
+                },
+                {
+                    "id": "C5",
+                    "version": "(C1 core)",
+                    "dlls": [
+                        "C5.dll"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "JSON Bson",
+            "note": "Newtonsoft.Json.Bson - only needed for BSON serialization (rare). Optional.",
+            "packages": [
+                {
+                    "id": "Newtonsoft.Json.Bson",
+                    "version": "1.0.2",
+                    "dlls": [
+                        "Newtonsoft.Json.Bson.dll"
+                    ]
+                }
+            ]
+        },
+        {
+            "name": ".NET Standard facades / shims (4.3.0 family)",
+            "note": "NETStandard.Library 1.6.1 facade DLLs. These are transitive dependencies of the above packages. Usually resolved automatically by NuGet when installing the parent package. Listed here for reference.",
+            "packages": [
+                {
+                    "id": "NETStandard.Library",
+                    "version": "1.6.1",
+                    "dlls": []
+                },
+                {
+                    "id": "Microsoft.NETCore.Platforms",
+                    "version": "1.1.0",
+                    "dlls": []
+                },
+                {
+                    "id": "Microsoft.Win32.Primitives",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "Microsoft.Win32.Primitives.dll"
+                    ]
+                },
+                {
+                    "id": "System.AppContext",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.AppContext.dll"
+                    ]
+                },
+                {
+                    "id": "System.Collections",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Collections.dll"
+                    ]
+                },
+                {
+                    "id": "System.Collections.Concurrent",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Collections.Concurrent.dll"
+                    ]
+                },
+                {
+                    "id": "System.Collections.Immutable",
+                    "version": "1.3.1",
+                    "dlls": [
+                        "System.Collections.Immutable.dll"
+                    ]
+                },
+                {
+                    "id": "System.ComponentModel",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.ComponentModel.dll"
+                    ]
+                },
+                {
+                    "id": "System.Console",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Console.dll"
+                    ]
+                },
+                {
+                    "id": "System.Diagnostics.Debug",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Diagnostics.Debug.dll"
+                    ]
+                },
+                {
+                    "id": "System.Diagnostics.DiagnosticSource",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Diagnostics.DiagnosticSource.dll"
+                    ]
+                },
+                {
+                    "id": "System.Diagnostics.Tracing",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Diagnostics.Tracing.dll"
+                    ]
+                },
+                {
+                    "id": "System.Dynamic.Runtime",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Dynamic.Runtime.dll"
+                    ]
+                },
+                {
+                    "id": "System.Formats.Asn1",
+                    "version": "8.0.1",
+                    "dlls": [
+                        "System.Formats.Asn1.dll"
+                    ]
+                },
+                {
+                    "id": "System.Globalization",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Globalization.dll"
+                    ]
+                },
+                {
+                    "id": "System.Globalization.Calendars",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Globalization.Calendars.dll"
+                    ]
+                },
+                {
+                    "id": "System.IO",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.IO.dll"
+                    ]
+                },
+                {
+                    "id": "System.IO.Compression",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.IO.Compression.dll"
+                    ]
+                },
+                {
+                    "id": "System.IO.Compression.ZipFile",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.IO.Compression.ZipFile.dll"
+                    ]
+                },
+                {
+                    "id": "System.IO.FileSystem",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.IO.FileSystem.dll"
+                    ]
+                },
+                {
+                    "id": "System.IO.FileSystem.Primitives",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.IO.FileSystem.Primitives.dll"
+                    ]
+                },
+                {
+                    "id": "System.Linq",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Linq.dll"
+                    ]
+                },
+                {
+                    "id": "System.Linq.Expressions",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Linq.Expressions.dll"
+                    ]
+                },
+                {
+                    "id": "System.Net.Http",
+                    "version": "4.3.4",
+                    "dlls": [
+                        "System.Net.Http.dll"
+                    ]
+                },
+                {
+                    "id": "System.Net.Sockets",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Net.Sockets.dll"
+                    ]
+                },
+                {
+                    "id": "System.Reactive",
+                    "version": "3.0.0",
+                    "dlls": [
+                        "System.Reactive.PlatformServices.dll",
+                        "System.Reactive.Windows.Threading.dll"
+                    ]
+                },
+                {
+                    "id": "System.Reflection",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Reflection.dll"
+                    ]
+                },
+                {
+                    "id": "System.Reflection.Extensions",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Reflection.Extensions.dll"
+                    ]
+                },
+                {
+                    "id": "System.Resources.ResourceManager",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Resources.ResourceManager.dll"
+                    ]
+                },
+                {
+                    "id": "System.Runtime",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Runtime.dll"
+                    ]
+                },
+                {
+                    "id": "System.Runtime.Extensions",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Runtime.Extensions.dll"
+                    ]
+                },
+                {
+                    "id": "System.Runtime.InteropServices",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Runtime.InteropServices.dll"
+                    ]
+                },
+                {
+                    "id": "System.Runtime.InteropServices.RuntimeInformation",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Runtime.InteropServices.RuntimeInformation.dll"
+                    ]
+                },
+                {
+                    "id": "System.Security.Cryptography.Algorithms",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Security.Cryptography.Algorithms.dll"
+                    ]
+                },
+                {
+                    "id": "System.Security.Cryptography.Encoding",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Security.Cryptography.Encoding.dll"
+                    ]
+                },
+                {
+                    "id": "System.Security.Cryptography.Primitives",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Security.Cryptography.Primitives.dll"
+                    ]
+                },
+                {
+                    "id": "System.Security.Cryptography.X509Certificates",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Security.Cryptography.X509Certificates.dll"
+                    ]
+                },
+                {
+                    "id": "System.Text.RegularExpressions",
+                    "version": "4.3.1",
+                    "dlls": [
+                        "System.Text.RegularExpressions.dll"
+                    ]
+                },
+                {
+                    "id": "System.Threading",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Threading.dll"
+                    ]
+                },
+                {
+                    "id": "System.Threading.Tasks",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Threading.Tasks.dll"
+                    ]
+                },
+                {
+                    "id": "System.Xml.ReaderWriter",
+                    "version": "4.3.0",
+                    "dlls": [
+                        "System.Xml.ReaderWriter.dll"
+                    ]
+                },
+                {
+                    "id": "System.Web.Http",
+                    "version": "(AspNet WebApi)",
+                    "dlls": [
+                        "System.Web.Http.dll",
+                        "System.Web.Http.WebHost.dll",
+                        "System.Net.Http.Formatting.dll"
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -264,3 +264,41 @@ To invoke without a browser UI, use a C1 **Inline C# Function** or a throwaway `
 - SQL-bound type: `SqlProvider.Test` → table `dbo.SqlProvider_test2` (auto-created)
 - Config files: `web.config`, `Composite.config`, `DynamicXmlDataProvider.config`,
   `DynamicSqlDataProvider.config`
+
+---
+
+## 11. Cross-Provider References (one type in XML, other in SQL)
+
+**Answer: No problem.** C1 resolves references at the data-access layer, not the
+storage layer. A reference from an XML-stored type to a SQL-stored type (or vice-versa)
+works transparently in both directions.
+
+### How it works
+
+1. A reference — `Composite.Data.DataReference<T>` or a `[ForeignKey]` field — stores
+   only the **key value** (GUID/string Id) of the referenced record as a plain column.
+   The storage provider just stores that value; it does not care where the target is.
+2. Resolution: `Composite.Data.DataReferenceFacade` → `DataFacade.GetData<T>()`.
+3. `DataFacade` routes each type to its own provider independently (via provider config
+   `<Interfaces>` claims). A lookup for a SQL-routed type hits the SQL provider;
+   an XML-routed one hits XML.
+
+### Why it works in hybrid mode
+
+| Concern | Reality |
+|---|---|
+| Physical FK constraint | SQL provider (LINQ-to-SQL) does **not** create SQL Server FK constraints; integrity is logical, enforced by `DataReferenceFacade.TryValidateForeignKeyIntegrity` / `GetBrokenReferencesReport` at the app layer |
+| Direction | XML→SQL and SQL→XML both work |
+| Reverse reference (`GetReferees`) | Queries the referencing type's provider — works |
+| Cascade delete | `AllowCascadeDeletes` handled by `DataReferenceFacade` at app layer — works |
+
+### Watch-outs
+
+1. **Migration must preserve Ids (critical).** References are key-based; migrated records
+   must keep their Ids. `DataProviderCopier` with `IgnorePrimaryKeyViolation = true`
+   copies records with existing keys → references stay valid.
+2. **Dangling references possible.** C1 doesn't enforce FK at DB level; deleting a
+   referenced record leaves the reference `null`/empty. Same within a single provider,
+   not hybrid-specific. Detect via `DataReferenceFacade.GetBrokenReferencesReport()`.
+3. **Performance (minor).** Cross-provider resolution = two lookups. For reference-heavy
+   scenarios, keep related types on the same provider.

@@ -1,10 +1,10 @@
 # C1AfterSetup — AI Context Memory
 
-> **Purpose:** `new task` ile yeni bir AI agent / fresh context başlatıldığında kaybolan bilgi birikimini
-> yeniden sağlamak. Debugging gotcha'ları, komut kalıpları, sabit değerler ve yöntemler burada toplanır.
-> Yeni agent bu dosyayı **İLK OKUMASI GEREKEN** dosya olarak görmeli.
+> **Purpose:** Restore accumulated knowledge when a `new task` starts a fresh AI agent / context.
+> Debugging gotchas, command patterns, constants, and methods are collected here.
+> A new agent should treat this file as the **FIRST file to read**.
 >
-> **Last updated:** 2026-08-07 (reference site documented; NuGet package management + AuthKit admin port plan)
+> **Last updated:** 2026-08-07 (required + optional NuGet packages documented; binding-redirect + Verify fixes; all docs in English)
 
 ---
 
@@ -172,7 +172,7 @@ Root pages use `ParentId="00000000-0000-0000-0000-000000000000"`.
 ## 7. Input/Output Convention
 
 When the user says:
-> "input olarak E:\C1\dev\Website output olarak r:\deploy3"
+> "input as E:\C1\dev\Website, output as r:\deploy3"
 
 This means:
 - `-site "E:\C1\dev\Website"` — source site to copy from
@@ -277,22 +277,22 @@ with DataTables admin UI + C# API (Razor synthetic API). Authoritative package v
 
 ---
 
-## 13. Git Commit Yöntemi
+## 13. Git Commit Method
 
-Commit mesajında `<`, `"`, `>` gibi karakterler veya Türkçe karakterler shell tarafından
-yanlış yorumlanabilir. **Her zaman `-F` (file) yöntemi kullan:**
+Characters like `<`, `"`, `>` (or Turkish characters) in a commit message may be mis-parsed by the
+shell. **Always use the `-F` (file) method:**
 
 ```cmd
-# 1) Mesajı geçici bir dosyaya yaz (write_to_file ile)
-# 2) Commit et:
-git add <dosyalar>
+:: 1) Write the message to a temp file (via write_to_file)
+:: 2) Commit:
+git add <files>
 git commit -F "path/to/commit-message.txt"
 
-# 3) Geçici dosyayı sil:
+:: 3) Delete the temp file:
 del "path/to/commit-message.txt"
 ```
 
-**Kesinlikle `-m "..."` kullanma** — `&`, `<`, `>` karakterleri cmd.exe'de kırılır.
+**Never use `-m "..."`** — `&`, `<`, `>` break in cmd.exe.
 
 ---
 
@@ -316,7 +316,7 @@ Pages are top-level (ParentId = zero GUID) with LocalOrdering 100/101.
 
 ### AdminTools VersionId Gotcha
 
-**Symptom:** `System.FormatException: GUID, 4 çizgi bulunan 32 basamak içermelidir` at `WritePageElements`.
+**Symptom:** `System.FormatException: GUID must contain 32 digits with 4 dashes` at `WritePageElements`.
 
 **Root cause:** Trying to generate a deterministic VersionId via `page.PageId.ToString().Substring(0, 28) + "0001"` produces an invalid GUID string (cuts mid-dash).
 
@@ -410,3 +410,83 @@ When an error is found in `r:\deployXY` (e.g., XHTML parsing error in a template
 copy /y "C1AfterSetup\sources\PageTemplates\AdminTools.DataProviderSelector.cshtml" "r:\deploy24\App_Data\PageTemplates\AdminTools.DataProviderSelector.cshtml"
 :: -> VS/IIS Express picks it up on next request; no full redeploy needed.
 ```
+
+---
+
+## 17. NuGet Package Management (AuthKit-relevant, fresh-install order)
+
+### Authoritative source
+- Reference site: `E:\_CODE_\WebDev\SystemC1\Website` (working precursor AuthKit)
+- **Package pin (authoritative):** `E:\_CODE_\WebDev\SystemC1\Website\packages.config`
+- Package store: `E:\_CODE_\WebDev\SystemC1\packages` — contains OLD + NEW versions (test history).
+  **Always resolve via `packages.config`, never by the newest folder.**
+- Deploy source for DLLs: `C1AfterSetup/sources/bin` (listed in `setup.manifest.json` `binDependencies`).
+
+### Install order (VS 2022 method: leaf/dependency FIRST, then target package)
+When adding a package, VS 2022 lists its dependencies. **Cancel the install**, manually install the
+newest possible versions of those dependencies FIRST (they exist in `packages/`), then the target.
+
+| Order | Package | Pin | Target DLL path in store | Notes |
+|-------|---------|-----|--------------------------|-------|
+| 1 | `System.Buffers` | 4.6.1 | `lib/net462/System.Buffers.dll` | leaf, no deps |
+| 2 | `System.Numerics.Vectors` | 4.6.1 | `lib/net462/System.Numerics.Vectors.dll` | leaf, no deps |
+| 3 | `System.Runtime.CompilerServices.Unsafe` | 6.1.2 | `lib/net462/System.Runtime.CompilerServices.Unsafe.dll` | leaf, no deps |
+| 4 | `System.Threading.Tasks.Extensions` | 4.6.0 | `lib/net462/System.Threading.Tasks.Extensions.dll` | depends on Unsafe |
+| 5 | `System.Memory` | 4.6.3 | `lib/net462/System.Memory.dll` | depends on 1,2,3,4 |
+| 6 | `Newtonsoft.Json` | 13.0.3 | `lib/net45/Newtonsoft.Json.dll` | **REQUIRED** by `ApiHandler.cs`/`AuthApi.cs` |
+| 7 | `BCrypt.Net-Next` | 4.1.0 | `lib/net48/BCrypt.Net-Next.dll` | leaf |
+| 8 | `Microsoft.CodeDom.Providers.DotNetCompilerPlatform` | 2.0.1 | `lib/...` + `tools/roslynlatest/*` | brings roslyn + ValueTuple |
+
+### Gotcha fixed (2026-08-07)
+- `Newtonsoft.Json.dll` was missing from `sources/bin` + `binDependencies` while
+  `ApiHandler.cs`/`AuthApi.cs` call `Newtonsoft.Json.JsonConvert` → runtime failure.
+  Copied `Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll` into `sources/bin` and added to manifest.
+- The reference site's bin DOES contain `Newtonsoft.Json.dll` (check `bin\Newtonsoft.Json.dll.refresh`).
+- `sources/bin/BCrypt.Net-Next.dll` was 4.2.0.0 (wrong) — replaced with pinned `4.1.0` net48.
+- Added `System.Threading.Tasks.Extensions.dll` (4.6.0) + `System.ValueTuple.dll` (4.5.0) to sources/bin + manifest.
+
+### ConfigureWebConfigStep binding-redirect bugs fixed (2026-08-07)
+Two bugs meant the AuthKit redirects were logged but NEVER written to disk:
+1. **`doc.Save` ran BEFORE the redirect block** — the redirect loop appended nodes and set
+   `changed = true`, but nothing saved them. **Fix:** re-save the doc after the redirect loop.
+2. **`RemoveDependentAssembly`/`HasDependentAssembly` used `SelectNodes("dependentAssembly")`**
+   which is namespace-agnostic-failing: C1's `assemblyBinding` lives in
+   `xmlns="urn:schemas-microsoft-com:asm.v1"`, so the existing `Newtonsoft.Json → 6.0.0.0` entry
+   was never removed → two conflicting redirects for the same assembly. **Fix:** iterate
+   `ChildNodes` filtering on `LocalName == "dependentAssembly"` (namespace-independent).
+- VerifyStep DataMetaData check now matches by **file name (GUID)** in both `PendingDataTypes` and
+  `DataMetaData` (C1 rewrites the XML content after `CompileGeneratedTypesStep` runs, so content
+  equality produced false "EKSİK/ESKİ" errors).
+
+### After any package change
+- `dotnet build C1AfterSetup/C1AfterSetup.csproj -c Release`
+- `aspnet_compiler.exe -v / -p "r:\deployNN"` + C1 log (§9 for known false positives).
+
+---
+
+## 18. Optional C1 CMS / NuGet Packages (NOT auto-deployed)
+
+The pipeline ships ONLY the AuthKit-required DLLs (`sources/bin` + manifest `binDependencies`).
+The reference site (`E:\_CODE_\WebDev\SystemC1\Website`) has ~73 more DLLs that this tool
+deliberately does NOT deploy — they are C1 CMS packages installable/upgradeable later from
+**C1 Console → Packages** (or NuGet) when a feature needs them.
+
+**Inventory (exact pins):** [`C1AfterSetup/Config/optional.packages.json`](C1AfterSetup/Config/optional.packages.json)
+
+| Group | Packages (pinned) |
+|---|---|
+| Google OAuth | `Google.Apis 1.71.0`, `Google.Apis.Auth 1.71.0`, `Google.Apis.Core 1.71.0`, `Google.Apis.Oauth2.v2 1.68.0.1869` |
+| E-mail (SMTP) | `MailKit 4.13.0`, `MimeKit 4.15.1`, `BouncyCastle.Cryptography 2.6.2`, `Portable.BouncyCastle 1.8.1.3`, `SharpZipLib 1.4.2` |
+| Scheduled Tasks | `Hangfire.CompositeC1 1.6.20`, `Hangfire.Core 1.8.14`, `CompositeC1.ScheduledTasks 0.5.1`, `Common.Logging` |
+| C1 Contributions | `CompositeC1Contrib.Core 0.9.0` |
+| Real-time / Messaging | `MQTTnet 4.3.6.1152`, `SignalR.Core 2.4.3`, `Microsoft.Owin* 4.2.3`/`2.1.0`, `Owin 1.0`, `WampSharp 18.3.1` family |
+| C1 Search | `Orckestra.Search`, `Orckestra.Search.LuceneNET`, `Lucene.Net*`, `BoboBrowse.Net`, `C5` |
+| JSON Bson | `Newtonsoft.Json.Bson 1.0.2` |
+| .NET Standard facades | `NETStandard.Library 1.6.1` family (`System.*` 4.3.0 shims, auto-resolved by NuGet) |
+
+**Rules:**
+- **Do NOT copy these DLLs into `sources/bin` blindly.** Several are C1 packages that must be
+  installed via C1's package system (they register types/functions/UI).
+- Version pinning source of truth: `E:\_CODE_\WebDev\SystemC1\Website\packages.config`.
+- To make one mandatory later: copy its DLL(s) to `sources/bin` + add to `binDependencies` +
+  add any binding redirect (see §17) + verify (`aspnet_compiler` + C1 log).

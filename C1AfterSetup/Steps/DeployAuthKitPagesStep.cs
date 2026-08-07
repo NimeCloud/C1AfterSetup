@@ -6,12 +6,12 @@ using System.Xml.Linq;
 namespace C1AfterSetup.Steps
 {
     /// <summary>
-    /// AuthKit sayfalarini (AuthKit Home, Login, Register, Forgot Password, Reset Password,
+    /// AuthKit sayfalarini (AuthKit, Login, Register, Forgot Password, Reset Password,
     /// Logout, Users, Groups, Group Permissions, User Permissions) programmatic olarak
     /// hedef sitenin DataStores XML'lerine ekler.
     /// 
     /// Mevcut sayfalar korunur; yalnizca eksik AuthKit sayfalari eklenir.
-    /// Tum sayfalar "AuthKit Home" sayfasinin altina child olarak eklenir.
+    /// Tum sayfalar "AuthKit" sayfasinin altina child olarak eklenir.
     /// </summary>
     public class DeployAuthKitPagesStep : ISetupStep
     {
@@ -30,7 +30,7 @@ namespace C1AfterSetup.Steps
         // --- Root parent ---
         private static readonly Guid RootParentId = new Guid("00000000-0000-0000-0000-000000000000");
 
-        // --- AuthKit Home page ID ---
+        // --- AuthKit page ID ---
         private static readonly Guid AuthKitHomePageId = new Guid("e1e01000-0000-0000-0000-e1e0e1e0e1e0");
 
         /// <summary>
@@ -112,7 +112,7 @@ namespace C1AfterSetup.Steps
         public void Plan(SetupContext context)
         {
             context.Log("  - 10 AuthKit sayfasi programmatic olarak DataStores XML'lerine eklenir:");
-            context.Log("    AuthKit Home (root) + 9 alt sayfa: Login, Register, Forgot, Reset, Logout,");
+            context.Log("    AuthKit (root) + 9 alt sayfa: Login, Register, Forgot, Reset, Logout,");
             context.Log("    Users, Groups, Group Permissions, User Permissions");
             context.Log("  - Sayfa yapisi (IPageStructure) ve PlaceholderContent otomatik olusturulur.");
         }
@@ -125,15 +125,15 @@ namespace C1AfterSetup.Steps
         {
             return new AuthKitPageDef[]
             {
-                // AuthKit Home – uses SetupPage template, Home page type, root level
+                // AuthKit – uses SetupPage template, Home page type, root level
                 new AuthKitPageDef
                 {
                     PageId = new Guid("e1e01000-0000-0000-0000-e1e0e1e0e1e0"),
                     TemplateId = TemplateSetupPage,
                     PageTypeId = PageTypeHome,
-                    Title = "AuthKit Home",
-                    MenuTitle = "AuthKit Home",
-                    UrlTitle = "AuthKit-Home",
+                    Title = "AuthKit",
+                    MenuTitle = "AuthKit",
+                    UrlTitle = "AuthKit",
                     RazorFunction = "",  // SetupPage renders itself
                     LocalOrdering = 1,
                 },
@@ -497,7 +497,7 @@ namespace C1AfterSetup.Steps
                 }
                 else
                 {
-                    // Yonetim sayfalari / AuthKit Home: bos content (template kendini render eder)
+                    // Yonetim sayfalari / AuthKit: bos content (template kendini render eder)
                     contentHtml =
                         "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n" +
                         "\t<head>\n\t</head>\n" +

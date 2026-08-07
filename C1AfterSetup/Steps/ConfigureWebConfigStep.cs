@@ -214,32 +214,52 @@ namespace C1AfterSetup.Steps
                 context.Log("  Web.config zaten istenen durumda (değişiklik gerekmedi).");
             }
 
-            // 6) System.Memory binding redirect: BCrypt.Net-Next 4.1.0.0 → System.Memory 4.0.5.0
-            //    gerektirir, ama NuGet'ten gelen DLL 4.0.1.1'dir.
-            //    Binding redirect ile uyumsuzluk giderilir.
+            // 6) AuthKit-relevant NuGet package binding redirects.
+            //    Reference site (SystemC1) pins these exact versions in its Web.config. C1's own
+            //    components (e.g. WampRouter) were built against OLD versions (Newtonsoft.Json 6.0.0.0),
+            //    so without redirects a FileLoadException occurs at startup. Redirect 0.0.0.0 → newVersion.
             {
                 XmlElement runtime = GetOrCreate(doc.DocumentElement, "runtime");
                 XmlElement assemblyBinding = GetOrCreate(runtime, "assemblyBinding",
                     "urn:schemas-microsoft-com:asm.v1");
 
-                // Eski System.Memory redirect'lerini temizle (versiyon degismis olabilir)
-                RemoveDependentAssembly(assemblyBinding, "System.Memory");
+                var redirects = new[]
+                {
+                    new { Name = "Newtonsoft.Json", Token = "30ad4fe6b2a6aeed", New = "13.0.0.0" },
+                    new { Name = "System.Memory", Token = "cc7b13ffcd2ddd51", New = "4.0.5.0" },
+                    new { Name = "System.ValueTuple", Token = "cc7b13ffcd2ddd51", New = "4.0.3.0" },
+                    new { Name = "System.Buffers", Token = "cc7b13ffcd2ddd51", New = "4.0.5.0" },
+                    new { Name = "System.Runtime.CompilerServices.Unsafe", Token = "b03f5f7f11d50a3a", New = "6.0.3.0" },
+                    new { Name = "System.Threading.Tasks.Extensions", Token = "cc7b13ffcd2ddd51", New = "4.2.1.0" }
+                };
 
-                XmlElement da = doc.CreateElement("dependentAssembly", "urn:schemas-microsoft-com:asm.v1");
-                XmlElement ai = doc.CreateElement("assemblyIdentity", "urn:schemas-microsoft-com:asm.v1");
-                ai.SetAttribute("name", "System.Memory");
-                ai.SetAttribute("publicKeyToken", "cc7b13ffcd2ddd51");
-                ai.SetAttribute("culture", "neutral");
-                da.AppendChild(ai);
+                foreach (var r in redirects)
+                {
+                    RemoveDependentAssembly(assemblyBinding, r.Name);
 
-                XmlElement br = doc.CreateElement("bindingRedirect", "urn:schemas-microsoft-com:asm.v1");
-                br.SetAttribute("oldVersion", "0.0.0.0-4.0.5.0");
-                br.SetAttribute("newVersion", "4.0.1.2");
-                da.AppendChild(br);
+                    XmlElement da = doc.CreateElement("dependentAssembly", "urn:schemas-microsoft-com:asm.v1");
+                    XmlElement ai = doc.CreateElement("assemblyIdentity", "urn:schemas-microsoft-com:asm.v1");
+                    ai.SetAttribute("name", r.Name);
+                    ai.SetAttribute("publicKeyToken", r.Token);
+                    ai.SetAttribute("culture", "neutral");
+                    da.AppendChild(ai);
 
-                assemblyBinding.AppendChild(da);
-                context.Log("  + bindingRedirect System.Memory 0.0.0.0-4.0.5.0 → 4.0.1.2");
-                changed = true;
+                    XmlElement br = doc.CreateElement("bindingRedirect", "urn:schemas-microsoft-com:asm.v1");
+                    br.SetAttribute("oldVersion", "0.0.0.0-" + r.New);
+                    br.SetAttribute("newVersion", r.New);
+                    da.AppendChild(br);
+
+                    assemblyBinding.AppendChild(da);
+                    context.Log("  + bindingRedirect " + r.Name + " 0.0.0.0-" + r.New + " → " + r.New);
+                    changed = true;
+                }
+            }
+
+            // Redirect'ler eklenmiş olabilir; değişiklikleri diske yaz.
+            if (changed)
+            {
+                doc.Save(webConfigPath);
+                context.Log("  Web.config güncellendi (binding redirects).");
             }
 
             // 7) Global.asax: API route'larini RegisterRoutes'a ekle
@@ -336,9 +356,9 @@ namespace C1AfterSetup.Steps
 
         private static bool HasDependentAssembly(XmlElement assemblyBinding, string name)
         {
-            foreach (XmlNode n in assemblyBinding.SelectNodes("dependentAssembly"))
+            foreach (XmlNode n in assemblyBinding.ChildNodes)
             {
-                if (n is XmlElement)
+                if (n is XmlElement && n.LocalName == "dependentAssembly")
                 {
                     var ai = ((XmlElement)n)["assemblyIdentity"];
                     if (ai != null && ai.Attributes["name"] != null && ai.Attributes["name"].Value == name)
@@ -351,9 +371,9 @@ namespace C1AfterSetup.Steps
         private static void RemoveDependentAssembly(XmlElement assemblyBinding, string name)
         {
             var toRemove = new List<XmlNode>();
-            foreach (XmlNode n in assemblyBinding.SelectNodes("dependentAssembly"))
+            foreach (XmlNode n in assemblyBinding.ChildNodes)
             {
-                if (n is XmlElement)
+                if (n is XmlElement && n.LocalName == "dependentAssembly")
                 {
                     var ai = ((XmlElement)n)["assemblyIdentity"];
                     if (ai != null && ai.Attributes["name"] != null && ai.Attributes["name"].Value == name)

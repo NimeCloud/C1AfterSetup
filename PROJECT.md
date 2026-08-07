@@ -1,4 +1,4 @@
-r:\deploy5 klasörüne çıkart# C1AfterSetup — Project Knowledge Base
+# C1AfterSetup — Project Knowledge Base
 
 > **Purpose:** Automate post-installation additions to a C1 CMS Website: AuthKit data types, App_Code modules, page templates, Razor functions, KeyTreeStore, Web.config hardening — with zero manual steps.
 >
@@ -184,8 +184,16 @@ KeyTreeStoreKit.KeyTreeStoreManager.Set("Auth.OAuth.Google.ClientId", ...);
 C1AfterSetup/sources/
 ├── DataTypeAutoInstaller.cs              # [ApplicationStartup] hook — registers PendingDataTypes
 ├── HeaderCleanupModule.cs                # IHttpModule to strip response headers
-├── bin/
-│   └── BCrypt.Net-Next.dll               # Password hashing dependency
+├── bin/                                   # Required (mandatory) AuthKit dependency DLLs
+│   ├── BCrypt.Net-Next.dll                # BCrypt.Net-Next 4.1.0 (net48) — password hashing
+│   ├── Newtonsoft.Json.dll                # Newtonsoft.Json 13.0.3 (net45) — JSON for ApiHandler/AuthApi
+│   ├── Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll  # 2.0.1 — Roslyn CodeDom
+│   ├── System.Memory.dll                  # System.Memory 4.6.3 (net462)
+│   ├── System.Buffers.dll                 # System.Buffers 4.6.1 (net462)
+│   ├── System.Numerics.Vectors.dll        # System.Numerics.Vectors 4.6.1 (net462)
+│   ├── System.Runtime.CompilerServices.Unsafe.dll  # 6.1.2 (net462)
+│   ├── System.Threading.Tasks.Extensions.dll      # 4.6.0 (net462)
+│   └── System.ValueTuple.dll              # System.ValueTuple 4.5.0 (net47)
 ├── overrides/
 │   └── README.txt                        # Optional bin overrides
 ├── generated/
@@ -245,7 +253,59 @@ C1AfterSetup/sources/
 
 ---
 
-## 9. Key Design Decisions & Gotchas
+## 9. NuGet Packages (Required + Optional)
+
+### Required (mandatory — auto-deployed by the pipeline)
+
+These DLLs ship from `sources/bin` (per `binDependencies` in
+[`setup.manifest.json`](C1AfterSetup/Config/setup.manifest.json)). Versions are **pinned** to the
+reference site's working combination (`E:\_CODE_\WebDev\SystemC1\Website\packages.config`).
+
+| DLL | Package (pinned) | Target framework |
+|---|---|---|
+| `BCrypt.Net-Next.dll` | `BCrypt.Net-Next 4.1.0` | net48 |
+| `Newtonsoft.Json.dll` | `Newtonsoft.Json 13.0.3` | net45 |
+| `Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll` | `Microsoft.CodeDom.Providers.DotNetCompilerPlatform 2.0.1` | net45 |
+| `System.Memory.dll` | `System.Memory 4.6.3` | net462 |
+| `System.Buffers.dll` | `System.Buffers 4.6.1` | net462 |
+| `System.Numerics.Vectors.dll` | `System.Numerics.Vectors 4.6.1` | net462 |
+| `System.Runtime.CompilerServices.Unsafe.dll` | `System.Runtime.CompilerServices.Unsafe 6.1.2` | net462 |
+| `System.Threading.Tasks.Extensions.dll` | `System.Threading.Tasks.Extensions 4.6.0` | net462 |
+| `System.ValueTuple.dll` | `System.ValueTuple 4.5.0` | net47 |
+
+The pipeline also ships the Roslyn compiler folder (`sources/roslyn/` → `~/bin/roslyn`) and injects
+matching **binding redirects** into `Web.config` (Newtonsoft.Json → 13.0.0.0, System.Memory → 4.0.5.0,
+System.ValueTuple → 4.0.3.0, System.Buffers → 4.0.5.0,
+System.Runtime.CompilerServices.Unsafe → 6.0.3.0,
+System.Threading.Tasks.Extensions → 4.2.1.0) so C1's own components (built against older versions,
+e.g. Newtonsoft.Json 6.0.0.0) resolve the pinned DLLs.
+
+### Optional (NOT auto-deployed)
+
+The reference site carries ~73 more DLLs that this tool deliberately does **not** deploy — they are
+C1 CMS packages installable/upgradeable later from **C1 Console → Packages** (or NuGet). Full
+inventory with pinned versions:
+
+> [`C1AfterSetup/Config/optional.packages.json`](C1AfterSetup/Config/optional.packages.json)
+
+| Group | Packages (pinned) |
+|---|---|
+| Google OAuth | `Google.Apis 1.71.0`, `Google.Apis.Auth 1.71.0`, `Google.Apis.Core 1.71.0`, `Google.Apis.Oauth2.v2 1.68.0.1869` |
+| E-mail (SMTP) | `MailKit 4.13.0`, `MimeKit 4.15.1`, `BouncyCastle.Cryptography 2.6.2`, `Portable.BouncyCastle 1.8.1.3`, `SharpZipLib 1.4.2` |
+| Scheduled Tasks | `Hangfire.CompositeC1 1.6.20`, `Hangfire.Core 1.8.14`, `CompositeC1.ScheduledTasks 0.5.1`, `Common.Logging` |
+| C1 Contributions | `CompositeC1Contrib.Core 0.9.0` |
+| Real-time / Messaging | `MQTTnet 4.3.6.1152`, `SignalR.Core 2.4.3`, `Microsoft.Owin* 4.2.3`/`2.1.0`, `Owin 1.0`, `WampSharp 18.3.1` family |
+| C1 Search | `Orckestra.Search`, `Orckestra.Search.LuceneNET`, `Lucene.Net*`, `BoboBrowse.Net`, `C5` |
+| JSON Bson | `Newtonsoft.Json.Bson 1.0.2` |
+| .NET Standard facades | `NETStandard.Library 1.6.1` family (`System.*` 4.3.0 shims, auto-resolved by NuGet) |
+
+> ⚠️ **Do NOT copy optional DLLs into `sources/bin` blindly** — several are C1 packages that must be
+> installed via C1's package system (they register types/functions/UI). To make one mandatory: copy
+> its DLL(s) to `sources/bin`, add to `binDependencies`, add the binding redirect, and re-verify.
+
+---
+
+## 10. Key Design Decisions & Gotchas
 
 ### Why `PendingDataTypes` not `DataMetaData`?
 C1 deletes unrecognized XMLs from `DataMetaData` on initialized sites. The hook reads from `PendingDataTypes` instead. After the hook processes them, it deletes the XMLs (`File.Delete`). `ResetRuntimeState` re-copies them for the real first start.
@@ -267,7 +327,7 @@ During the compile IIS Express session, C1 **consumes** the `.c1pac` from `AutoI
 
 ---
 
-## 10. Common Error Scenarios
+## 11. Common Error Scenarios
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
@@ -281,7 +341,7 @@ During the compile IIS Express session, C1 **consumes** the `.c1pac` from `AutoI
 
 ---
 
-## 11. Build & Deploy
+## 12. Build & Deploy
 
 ### Build:
 ```powershell
@@ -308,7 +368,7 @@ powershell -File testdata/diag_generated.ps1 -dllPath "r:\deploy\bin\Composite.G
 
 ---
 
-## 12. Test Tools
+## 13. Test Tools
 
 | Tool | Purpose |
 |------|---------|
@@ -320,7 +380,7 @@ powershell -File testdata/diag_generated.ps1 -dllPath "r:\deploy\bin\Composite.G
 
 ---
 
-## 13. State & Resumability
+## 14. State & Resumability
 
 - Progress stored at `~/App_Data/Composite/C1AfterSetup/state.json`
 - Each step: `Verify()` checks current state → skip if correct; re-apply if stale
@@ -330,7 +390,7 @@ powershell -File testdata/diag_generated.ps1 -dllPath "r:\deploy\bin\Composite.G
 
 ---
 
-## 14. Debugging Experience
+## 15. Debugging Experience
 
 See [`DEBUG-XP.md`](DEBUG-XP.md) for accumulated debugging knowledge:
 - Template GUIDs & page ID mapping
