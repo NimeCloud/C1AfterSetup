@@ -9,23 +9,24 @@ public class LinkedUserManager
             if (string.IsNullOrEmpty(email) || !email.Contains("@"))
                 email = username + "@" + providerName + ".internal";
 
-            // deploy6'da CreateUser tuple döner: (bool IsSuccess, string ErrorMessage, User NewUser)
+            // CreateUser returns a tuple: (bool IsSuccess, string ErrorMessage, User NewUser)
             var result = AuthKit.Authentication.AuthenticationManager.CreateUser(
                 username, email, password, true, false);
 
-            // IsSuccess=true → olusturuldu. Hata mesaji "zaten" iceriyorsa → zaten var, OK.
-            if (result.IsSuccess || (result.ErrorMessage ?? "").Contains("zaten"))
+            // IsSuccess=true -> created. If the error message contains "already", the user
+            // already exists (shadow account already present) - treat as OK.
+            if (result.IsSuccess || (result.ErrorMessage ?? "").Contains("already"))
                 return true;
 
-            // Gercek hata: logla ve false dön ki login basarisiz olsun
+            // Real error: log it and return false so the login fails
             Composite.Core.Log.LogError("LinkedUserManager.EnsureShadowUser",
-                $"Shadow user olusturulamadi: {username} ({providerName}) - {result.ErrorMessage}");
+                $"Shadow user could not be created: {username} ({providerName}) - {result.ErrorMessage}");
             return false;
         }
         catch (Exception ex)
         {
             Composite.Core.Log.LogError("LinkedUserManager.EnsureShadowUser",
-                $"Shadow user olusturma hatasi: {username} ({providerName}) - {ex.Message}");
+                $"Shadow user creation error: {username} ({providerName}) - {ex.Message}");
             return false;
         }
     }

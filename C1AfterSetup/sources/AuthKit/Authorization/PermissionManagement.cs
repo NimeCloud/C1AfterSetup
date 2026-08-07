@@ -38,7 +38,7 @@ namespace AuthKit.Authorization
             if (currentUser == null)
             {
                 HttpContext.Current.Response.StatusCode = 401;
-                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { error = "Bu işlemi yapmak için giriş yapmalısınız." });
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { error = "You must be logged in to perform this operation." });
             }
 
             if (!HasPermission(currentUser, permissionKey))
@@ -46,7 +46,7 @@ namespace AuthKit.Authorization
                 HttpContext.Current.Response.StatusCode = 403;
 
                 var permissionInfo = GetPermissionAttribute(permissionKey);
-                string errorMessage = "Bu işlem için gerekli yetkiye sahip değilsiniz.";
+                string errorMessage = "You do not have the required permission to perform this operation.";
 
                 if (permissionInfo != null && !string.IsNullOrEmpty(permissionInfo.ErrorMessage))
                     errorMessage = permissionInfo.ErrorMessage;
@@ -152,7 +152,7 @@ namespace AuthKit.Authorization
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("UpdateDirectUserPermissions", ex.Message);
-                return (false, "Kullanıcı yetkileri güncellenirken bir veritabanı hatası oluştu.");
+                return (false, "A database error occurred while updating user permissions.");
             }
         }
 
@@ -209,7 +209,7 @@ namespace AuthKit.Authorization
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("UpdatePermissionsForGroup", ex.Message);
-                return (false, "Grup yetkileri güncellenirken bir veritabanı hatası oluştu.");
+                return (false, "A database error occurred while updating group permissions.");
             }
         }
 
@@ -297,7 +297,7 @@ namespace AuthKit.Authorization
         public static (bool IsSuccess, string ErrorMessage) CloneGroupPermissions(string sourceGroupId, string newGroupId)
         {
             if (sourceGroupId == newGroupId)
-                return (false, "Kaynak ve hedef grup aynı olamaz.");
+                return (false, "Source and target group cannot be the same.");
 
             try
             {
@@ -323,7 +323,7 @@ namespace AuthKit.Authorization
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("CloneGroupPermissions", ex.Message);
-                return (false, "Grup yetkileri klonlanırken bir veritabanı hatası oluştu.");
+                return (false, "A database error occurred while cloning group permissions.");
             }
         }
 
@@ -333,7 +333,7 @@ namespace AuthKit.Authorization
         public static (bool IsSuccess, string ErrorMessage) CloneUserPermissionsAndGroups(string sourceUserId, string newUserId)
         {
             if (sourceUserId == newUserId)
-                return (false, "Kaynak ve hedef kullanıcı aynı olamaz.");
+                return (false, "Source and target user cannot be the same.");
 
             try
             {
@@ -382,7 +382,7 @@ namespace AuthKit.Authorization
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("CloneUserPermissionsAndGroups", ex.Message);
-                return (false, "Kullanıcı ayarları klonlanırken bir veritabanı hatası oluştu.");
+                return (false, "A database error occurred while cloning user settings.");
             }
         }
     }

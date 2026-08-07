@@ -3,7 +3,7 @@
 @using System.Web
 
 @functions {
-    public override string FunctionDescription => "AuthKit kullanici giris formu (parola + Google/Facebook OAuth)";
+    public override string FunctionDescription => "AuthKit user login form (password + Google/Facebook OAuth)";
 }
 
 @{
@@ -71,7 +71,7 @@ System.Collections.Generic.Dictionary<string, object>;
         }
         else
         {
-            error = (dict != null && dict.ContainsKey("error")) ? Convert.ToString(dict["error"]) : "Giris basarisiz.";
+            error = (dict != null && dict.ContainsKey("error")) ? Convert.ToString(dict["error"]) : "Login failed.";
         }
     }
 
@@ -79,8 +79,8 @@ System.Collections.Generic.Dictionary<string, object>;
     var facebookAppId = AuthKit.Authentication.AuthenticationManager.FacebookAppId;
 }
 
-<h4 class="mb-1 fw-semibold">Giriş Yap</h4>
-<p class="mb-3 text-muted">Hesabınıza giriş yapın</p>
+<h4 class="mb-1 fw-semibold">Log In</h4>
+<p class="mb-3 text-muted">Sign in to your account</p>
 
 @if (!string.IsNullOrEmpty(error))
 {
@@ -91,25 +91,25 @@ System.Collections.Generic.Dictionary<string, object>;
     <input type="hidden" name="provider" id="oauthProvider" value="" />
     <input type="hidden" name="credential" id="oauthCredential" value="" />
     <div class="mb-3">
-        <label class="form-label">Kullanıcı Adı / E-posta</label>
+        <label class="form-label">Username / Email</label>
         <input type="text" class="form-control" name="username" required="required" />
     </div>
     <div class="mb-3">
-        <label class="form-label">Parola</label>
+        <label class="form-label">Password</label>
         <input type="password" class="form-control" name="password" required="required" />
     </div>
     <div class="form-check mb-3">
         <input class="form-check-input" type="checkbox" name="rememberMe" id="rememberMe" />
-        <label class="form-check-label" for="rememberMe">Beni hatırla</label>
+        <label class="form-check-label" for="rememberMe">Remember me</label>
     </div>
-    <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
+    <button type="submit" class="btn btn-primary w-100">Log In</button>
     <div class="d-flex justify-content-between mt-3 small">
         <a
-            href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")">Kayıt
-            Ol</a>
+            href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")">Sign
+            Up</a>
             <a
-                href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")">Şifremi
-                Unuttum</a>
+                href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")">Forgot
+                Password</a>
             </div>
         </form>
 
@@ -117,7 +117,7 @@ System.Collections.Generic.Dictionary<string, object>;
         {
             <div class="d-flex align-items-center my-3">
                 <hr class="flex-grow-1" />
-                <span class="px-2 text-muted small">veya</span>
+                <span class="px-2 text-muted small">or</span>
                 <hr class="flex-grow-1" />
             </div>
             <div class="d-grid gap-2">
@@ -128,7 +128,7 @@ System.Collections.Generic.Dictionary<string, object>;
                 @if (!string.IsNullOrEmpty(facebookAppId))
                 {
                     <button type="button" class="btn btn-outline-primary w-100" onclick="authkitFacebookLogin();">
-                        Facebook ile Giriş Yap
+                        Log in with Facebook
                     </button>
                 }
             </div>
@@ -140,7 +140,7 @@ System.Collections.Generic.Dictionary<string, object>;
         }
         @if (!string.IsNullOrEmpty(facebookAppId))
         {
-            var fbSdkUrl = "https://connect.facebook.net/tr_TR/sdk.js#xfbml=1&version=v18.0&appId=" + facebookAppId;
+            var fbSdkUrl = "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v18.0&appId=" + facebookAppId;
             <script async="async" defer="defer" crossorigin="anonymous" src="@fbSdkUrl"></script>
         }
 

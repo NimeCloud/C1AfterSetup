@@ -26,18 +26,18 @@
         {
             var pagesToCreate = new[] {
                 (TemplateId: new Guid("f9a2e1d7-8c3b-4b2a-9e1f-1a2b3c4d5e6f"), Title: "Users", UrlTitle: "Users", MenuTitle:
-"Kullanicilar"),
+"Users"),
                 (TemplateId: new Guid("50562763-9421-40b6-8897-5214ab170051"), Title: "Groups", UrlTitle: "Groups", MenuTitle:
-"Gruplar"),
+"Groups"),
                 (TemplateId: new Guid("ff5a0c90-7f64-4e56-b9b9-1c078276f4c2"), Title: "Group Permissions", UrlTitle:
-"Group-Permissions", MenuTitle: "Grup Yetkileri"),
+"Group-Permissions", MenuTitle: "Group Permissions"),
                 (TemplateId: new Guid("70d2e0d8-d2d1-4209-a5ae-a0bc7d283a9d"), Title: "User Permissions", UrlTitle: "User-Permissions",
-MenuTitle: "Kullanici Yetkileri"),
-                (TemplateId: AuthLayoutTemplateId, Title: "Login", UrlTitle: "Login", MenuTitle: "Giris"),
-                (TemplateId: AuthLayoutTemplateId, Title: "Register", UrlTitle: "Register", MenuTitle: "Kayit"),
-                (TemplateId: AuthLayoutTemplateId, Title: "Forgot Password", UrlTitle: "Forgot-Password", MenuTitle: "Sifremi Unuttum"),
-                (TemplateId: AuthLayoutTemplateId, Title: "Reset Password", UrlTitle: "Reset-Password", MenuTitle: "Sifre Sifirla"),
-                (TemplateId: AuthLayoutTemplateId, Title: "Logout", UrlTitle: "Logout", MenuTitle: "Cikis"),
+MenuTitle: "User Permissions"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Login", UrlTitle: "Login", MenuTitle: "Login"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Register", UrlTitle: "Register", MenuTitle: "Register"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Forgot Password", UrlTitle: "Forgot-Password", MenuTitle: "Forgot Password"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Reset Password", UrlTitle: "Reset-Password", MenuTitle: "Reset Password"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Logout", UrlTitle: "Logout", MenuTitle: "Logout"),
             };
 
             foreach (var page in pagesToCreate)
@@ -45,7 +45,7 @@ MenuTitle: "Kullanici Yetkileri"),
                 var existing = conn.Get<IPage>().FirstOrDefault(p => p.UrlTitle == page.UrlTitle);
                 if (existing != null)
                 {
-                    log.AppendLine(string.Format("ATLANDI: '{0}' zaten mevcut (ID: {1})", page.Title, existing.Id));
+                    log.AppendLine(string.Format("SKIPPED: '{0}' already exists (ID: {1})", page.Title, existing.Id));
                     continue;
                 }
 
@@ -75,7 +75,7 @@ MenuTitle: "Kullanici Yetkileri"),
                     structure.LocalOrdering = 99;
                     conn.Add(structure);
 
-                    log.AppendLine(string.Format("OLUSTURULDU: '{0}' -> /{1} (ID: {2})", page.Title, page.UrlTitle, newPage.Id));
+                    log.AppendLine(string.Format("CREATED: '{0}' -> /{1} (ID: {2})", page.Title, page.UrlTitle, newPage.Id));
 
                     if (page.UrlTitle == "Login")
                     {
@@ -90,7 +90,7 @@ MenuTitle: "Kullanici Yetkileri"),
                 }
                 catch (Exception ex)
                 {
-                    log.AppendLine(string.Format("HATA: '{0}' olusturulamadi: {1}", page.Title, ex.Message));
+                    log.AppendLine(string.Format("ERROR: '{0}' could not be created: {1}", page.Title, ex.Message));
                 }
             }
 
@@ -116,7 +116,7 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
     var initDone = false;
     var saveOAuthMessage = "";
 
-    // AuthKit init kontrolü
+    // AuthKit init check
     try
     {
         initDone = AuthKit.Startup.AuthStartupHandler.IsInitialized;
@@ -145,11 +145,11 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
             var facebookAppId = (Request["facebookAppId"] ?? "").Trim();
             AuthKit.Settings.SettingsManager.Set("Auth.OAuth.Google.ClientId", googleClientId);
             AuthKit.Settings.SettingsManager.Set("Auth.OAuth.Facebook.AppId", facebookAppId);
-            saveOAuthMessage = "OAuth ayarlari basariyla kaydedildi.";
+            saveOAuthMessage = "OAuth settings saved successfully.";
         }
         catch (Exception ex)
         {
-            saveOAuthMessage = "OAuth ayarlari kaydedilemedi: " + ex.Message;
+            saveOAuthMessage = "Failed to save OAuth settings: " + ex.Message;
         }
     }
 }
@@ -164,19 +164,19 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
 
 <body class="p-4">
     <div class="container">
-        <h2>AuthKit Kurulum Paneli</h2>
+        <h2>AuthKit Setup Panel</h2>
 
         @if (!typesReady)
         {
             <div class="alert alert-warning">
-                <h5>Data Tipleri Henuz Yuklenmedi</h5>
-                <p>AuthKit DLL ve DataMetaData dosyalari kopyalandi, ancak C1 CMS henuz yeni data tiplerini tanimadi.</p>
-                <p><strong>Yapmaniz gereken:</strong></p>
+                <h5>Data Types Not Loaded Yet</h5>
+                <p>AuthKit DLL and DataMetaData files were copied, but C1 CMS has not yet registered the new data types.</p>
+                <p><strong>What you need to do:</strong></p>
                 <ol>
-                    <li>Su adrese gidin: <a href="/Composite/updated.aspx"
-                                                target="_blank"><code>/Composite/updated.aspx</code></a></li>
-                        <li>Bu sayfa C1 CMS'in tipleri yeniden derlemesini saglayacak</li>
-                        <li>Sonra bu sayfayi yenileyin (F5)</li>
+                    <li>Go to this address: <a href="/Composite/updated.aspx"
+                                                   target="_blank"><code>/Composite/updated.aspx</code></a></li>
+                        <li>This page will make C1 CMS recompile the types</li>
+                        <li>Then refresh this page (F5)</li>
                     </ol>
                 </div>
             }
@@ -190,68 +190,68 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
                 }
 
                 <div class="alert @(initDone ? "alert-success" : "alert-info")">
-                    AuthKit durumu: <strong>@(initDone ? "Baslatildi" : "Baslatiliyor...")</strong>
+                    AuthKit status: <strong>@(initDone ? "Initialized" : "Initializing...")</strong>
                     if (initDone)
                     {
-                    <span> - GroupKeys ve Permission senkronizasyonu tamamlandi.</span>
+                    <span> - GroupKeys and Permission synchronization completed.</span>
                     }
                 </div>
 
                 <div class="card mb-3">
-                    <div class="card-header">AuthKit Sayfalari</div>
+                    <div class="card-header">AuthKit Pages</div>
                     <div class="card-body">
                         <table class="table table-sm">
                             <thead>
                                 <tr>
-                                    <th>Sayfa</th>
+                                    <th>Page</th>
                                     <th>Link</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>Kullanici Yonetimi</td>
+                                    <td>User Management</td>
                                     <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/Users")"
-                                               class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                               class="btn btn-sm btn-outline-primary">Open</a></td>
                                     </tr>
                                     <tr>
-                                        <td>Grup Yonetimi</td>
+                                        <td>Group Management</td>
                                         <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c3c03000-0000-0000-0000-c3c0c3c0c3c0"), "~/Groups")"
-                                                   class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                   class="btn btn-sm btn-outline-primary">Open</a></td>
                                         </tr>
                                         <tr>
-                                            <td>Grup Yetkileri</td>
+                                            <td>Group Permissions</td>
                                             <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d4d04000-0000-0000-0000-d4d0d4d0d4d0"), "~/Group-Permissions")"
-                                                       class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                       class="btn btn-sm btn-outline-primary">Open</a></td>
                                             </tr>
                                             <tr>
-                                                <td>Kullanici Yetkileri</td>
+                                                <td>User Permissions</td>
                                                 <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("e5e05000-0000-0000-0000-e5e0e5e0e5e0"), "~/User-Permissions")"
-                                                           class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                           class="btn btn-sm btn-outline-primary">Open</a></td>
                                                 </tr>
                                                 <tr>
-                                                    <td>Giris</td>
+                                                    <td>Login</td>
                                                     <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/Login")"
-                                                               class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                               class="btn btn-sm btn-outline-primary">Open</a></td>
                                                     </tr>
                                                     <tr>
-                                                        <td>Kayit</td>
+                                                        <td>Register</td>
                                                         <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")"
-                                                                   class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                                   class="btn btn-sm btn-outline-primary">Open</a></td>
                                                         </tr>
                                                         <tr>
-                                                            <td>Sifremi Unuttum</td>
+                                                            <td>Forgot Password</td>
                                                             <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")"
-                                                                       class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                                       class="btn btn-sm btn-outline-primary">Open</a></td>
                                                             </tr>
                                                             <tr>
-                                                                <td>Sifre Sifirla</td>
+                                                                <td>Reset Password</td>
                                                                 <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c9c09000-0000-0000-0000-c9c0c9c0c9c0"), "~/Reset-Password")"
-                                                                           class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                                           class="btn btn-sm btn-outline-primary">Open</a></td>
                                                                 </tr>
                                                                 <tr>
-                                                                    <td>Cikis</td>
+                                                                    <td>Logout</td>
                                                                     <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d0d0a000-0000-0000-0000-d0d0d0d0d0d0"), "~/Logout")"
-                                                                               class="btn btn-sm btn-outline-primary">Ac</a></td>
+                                                                               class="btn btn-sm btn-outline-primary">Open</a></td>
                                                                     </tr>
                                                                 </tbody>
                                                             </table>
@@ -259,14 +259,14 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
                                                     </div>
 
                                                     <div class="card mb-3">
-                                                        <div class="card-header">OAuth Yapilandirma (Google / Facebook Giris)</div>
+                                                        <div class="card-header">OAuth Configuration (Google / Facebook Login)</div>
                                                         <div class="card-body">
                                                             @if (!string.IsNullOrEmpty(saveOAuthMessage))
                                                             {
                                                                 <div class="alert alert-success">@saveOAuthMessage</div>
                                                             }
-                                                            <p class="text-muted">Google ve Facebook ile giris yapmak icin istemci kimliklerini (Client ID / App ID)
-                                                                asagiya girin ve kaydedin.</p>
+                                                            <p class="text-muted">Enter and save the client credentials (Client ID / App ID)
+                                                                below to enable login with Google and Facebook.</p>
                                                                 <form method="post" action="?action=saveoauth">
                                                                     <div class="mb-3">
                                                                         <label class="form-label">Google Client ID</label>
@@ -280,16 +280,16 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
                                                                                value="@(AuthKit.Authentication.AuthenticationManager.FacebookAppId)"
                                                                                placeholder="1234567890123456" />
                                                                     </div>
-                                                                    <button type="submit" class="btn btn-secondary">OAuth Ayarlarini Kaydet</button>
+                                                                    <button type="submit" class="btn btn-secondary">Save OAuth Settings</button>
                                                                 </form>
                                                             </div>
                                                         </div>
 
                                                         <a href="?action=create" class="btn btn-primary btn-lg"
-                                                           onclick="return confirm('9 sayfa olusturulacak. Devam etmek istiyor musunuz?');">
-                                                            Sayfalari Olustur
+                                                           onclick="return confirm('9 pages will be created. Do you want to continue?');">
+                                                            Create Pages
                                                         </a>
-                                                        <p class="text-muted mt-2">Var olan sayfalar atlanir.</p>
+                                                        <p class="text-muted mt-2">Existing pages are skipped.</p>
                                                     }
                                                 </div>
                                             </body>

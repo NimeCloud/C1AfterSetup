@@ -34,14 +34,14 @@
 
     <div class="card">
         <div class="card-body">
-            <p class="card-subtitle mb-4">Sistemdeki tüm kullanıcı gruplarını buradan yönetebilirsiniz.</p>
+            <p class="card-subtitle mb-4">Manage all user groups in the system here.</p>
             <div class="table-responsive mt-4">
                 <table id="groups-table" class="table table-bordered table-striped" style="width:100%">
                     <thead>
                         <tr>
                             <th>Id</th>
-                            <th>Grup Adı</th>
-                            <th>Açıklama</th>
+                            <th>Group Name</th>
+                            <th>Description</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -62,7 +62,7 @@
     // Replaces DataTables' "Loading..." row with a readable message when the API returns
     // 401/403 (auth/permission) or any other non-200 response.
     function showTableLoadError(tableId, xhr) {
-        var msg = 'Tablo yüklenirken bir hata oluştu.';
+        var msg = 'An error occurred while loading the table.';
         if (xhr && xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
         else if (xhr && xhr.responseText) {
             try { var j = JSON.parse(xhr.responseText); if (j && j.error) msg = j.error; } catch (e) { }
@@ -70,7 +70,7 @@
         if (xhr && (xhr.status === 401 || xhr.status === 403)) {
             if (!window.__authkitAuthErrorShown) {
                 window.__authkitAuthErrorShown = true;
-                Swal.fire('Yetki Hatası', msg, 'error');
+                Swal.fire('Permission Error', msg, 'error');
             }
         }
         $('#' + tableId).find('tbody').empty()
@@ -79,12 +79,12 @@
 
     $(function () {
         var buttons = [
-            { text: 'Ekle', name: 'add' },
-            { extend: 'selected', text: 'Düzenle', name: 'edit' },
-            { extend: 'selected', text: 'Sil', name: 'delete' },
+            { text: 'Add', name: 'add' },
+            { extend: 'selected', text: 'Edit', name: 'edit' },
+            { extend: 'selected', text: 'Delete', name: 'delete' },
             { className: 'dt-button-divider', text: '', action: function (e) { e.preventDefault(); } },
             {
-                extend: 'selected', text: 'Üyeleri Yönet',
+                extend: 'selected', text: 'Manage Members',
                 action: function (e, dt, node, config) {
                     var selectedData = dt.rows({ selected: true }).data()[0];
                     if (selectedData) openGroupUserManagementModal(selectedData.Id, selectedData.GroupName);
@@ -102,8 +102,8 @@
             },
             columns: [
                 { data: 'Id', visible: false },
-                { data: 'GroupName', title: 'Grup Adı' },
-                { data: 'Description', title: 'Açıklama' }
+                { data: 'GroupName', title: 'Group Name' },
+                { data: 'Description', title: 'Description' }
             ],
             buttons: buttons,
             "onAddRow": function (datatable, rowdata, success, error) {
@@ -111,22 +111,22 @@
                 if (sourceGroupId) { rowdata.SourceGroupId = sourceGroupId; }
                 $.ajax({
                     url: '/Api/AddGroup', type: 'POST', contentType: 'text/plain; charset=utf-8', data: JSON.stringify(rowdata),
-                    success: function (data) { success(data); Swal.fire('Başarılı!', 'Grup eklendi.', 'success'); },
-                    error: function (res) { var err = res.responseJSON || { error: 'İstek işlenirken bir sorun oluştu.' }; Swal.fire('Hata!', err.error, 'error'); }
+                    success: function (data) { success(data); Swal.fire('Success!', 'Group added.', 'success'); },
+                    error: function (res) { var err = res.responseJSON || { error: 'There was a problem processing the request.' }; Swal.fire('Error!', err.error, 'error'); }
                 });
             },
             "onEditRow": function (datatable, rowdata, success, error) {
                 $.ajax({
                     url: '/Api/UpdateGroup', type: 'POST', contentType: 'text/plain; charset=utf-8', data: JSON.stringify(rowdata),
-                    success: function (data) { success(data); Swal.fire('Başarılı!', 'Grup güncellendi.', 'success'); },
-                    error: function (res) { var err = res.responseJSON || { error: 'İstek işlenirken bir sorun oluştu.' }; Swal.fire('Hata!', err.error, 'error'); }
+                    success: function (data) { success(data); Swal.fire('Success!', 'Group updated.', 'success'); },
+                    error: function (res) { var err = res.responseJSON || { error: 'There was a problem processing the request.' }; Swal.fire('Error!', err.error, 'error'); }
                 });
             },
             "onDeleteRow": function (datatable, rowdata, success, error) {
                 $.ajax({
                     url: '/Api/DeleteGroup', type: 'POST', contentType: 'text/plain; charset=utf-8', data: JSON.stringify(rowdata[0]),
-                    success: function (data) { success(data); Swal.fire('Başarılı!', 'Grup silindi.', 'success'); },
-                    error: function (res) { var err = res.responseJSON || { error: 'İstek işlenirken bir sorun oluştu.' }; Swal.fire('Hata!', err.error, 'error'); }
+                    success: function (data) { success(data); Swal.fire('Success!', 'Group deleted.', 'success'); },
+                    error: function (res) { var err = res.responseJSON || { error: 'There was a problem processing the request.' }; Swal.fire('Error!', err.error, 'error'); }
                 });
             }
         });
@@ -136,7 +136,7 @@
             var modalBody = $(this).find('.modal-body');
             $(this).find('#alteditor-row-Id').hide();
             if ($('#alteditor-clone-group-row').length === 0) {
-                var cloneRow = $('<div class="mb-3 row" id="alteditor-clone-group-row"><label class="col-md-4">Yetkileri Kopyala</label><div class="col-md-8"><select id="alteditor-clone-group-select" class="form-select"><option value="">Kopyalama...</option></select></div></div>');
+                var cloneRow = $('<div class="mb-3 row" id="alteditor-clone-group-row"><label class="col-md-4">Copy Permissions</label><div class="col-md-8"><select id="alteditor-clone-group-select" class="form-select"><option value="">Copy...</option></select></div></div>');
                 modalBody.append(cloneRow);
                 $.ajax({
                     url: '/Api/GetAllGroupsForDropdown', type: 'POST',
@@ -160,9 +160,9 @@
             });
 
             var mh = '<div class="modal fade" id="groupUsersModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">' +
-                '<div class="modal-header"><h5 class="modal-title">' + groupName + ' Grubu Üyeleri</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>' +
-                '<div class="modal-body"><table id="users-for-group-table" class="table table-bordered" style="width:100%"><thead><tr><th></th><th>Kullanıcı</th><th>E-posta</th></tr></thead></table></div>' +
-                '<div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button><button class="btn btn-primary" id="saveGroupMembersBtn">Kaydet</button></div></div></div></div>';
+                '<div class="modal-header"><h5 class="modal-title">' + groupName + ' - Group Members</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>' +
+                '<div class="modal-body"><table id="users-for-group-table" class="table table-bordered" style="width:100%"><thead><tr><th></th><th>User</th><th>Email</th></tr></thead></table></div>' +
+                '<div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button class="btn btn-primary" id="saveGroupMembersBtn">Save</button></div></div></div></div>';
 
             $('#groupUsersModal').remove();
             $('body').append(mh);
@@ -197,8 +197,8 @@
                 $.ajax({
                     url: '/Api/UpdateGroupMembersDelta', type: 'POST', contentType: 'text/plain; charset=utf-8',
                     data: JSON.stringify({ groupId: groupId, userIdsToAdd: Array.from(changes.added), userIdsToRemove: Array.from(changes.removed) }),
-                    success: function () { modalInstance.hide(); Swal.fire('Başarılı!', 'Üyeler güncellendi.', 'success'); },
-                    error: function () { Swal.fire('Hata!', 'Güncelleme başarısız.', 'error'); }
+                    success: function () { modalInstance.hide(); Swal.fire('Success!', 'Members updated.', 'success'); },
+                    error: function () { Swal.fire('Error!', 'Update failed.', 'error'); }
                 });
             });
 

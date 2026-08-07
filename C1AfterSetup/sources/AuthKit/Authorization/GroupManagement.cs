@@ -18,7 +18,7 @@ namespace AuthKit.Authorization
                 {
                     bool groupExists = connection.Get<AuthKit.Data.Authorization.Group>().Any(g => g.GroupName.Equals(groupName, StringComparison.OrdinalIgnoreCase));
                     if (groupExists)
-                        return (false, "Bu isimde bir grup zaten mevcut.", null);
+                        return (false, "A group with this name already exists.", null);
 
                     var newGroup = connection.CreateNew<AuthKit.Data.Authorization.Group>();
                     newGroup.GroupName = groupName;
@@ -31,7 +31,7 @@ namespace AuthKit.Authorization
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("AuthorizationManager.CreateGroup", ex.Message);
-                return (false, "Grup oluşturulurken bir veritabanı hatası oluştu.", null);
+                return (false, "A database error occurred while creating the group.", null);
             }
         }
 
@@ -46,12 +46,12 @@ namespace AuthKit.Authorization
                 {
                     var groupToUpdate = connection.Get<AuthKit.Data.Authorization.Group>().FirstOrDefault(g => g.Id == groupId);
                     if (groupToUpdate == null)
-                        return (false, "Güncellenecek grup bulunamadı.", null);
+                        return (false, "Group to update not found.", null);
 
                     bool nameExists = connection.Get<AuthKit.Data.Authorization.Group>()
                                                 .Any(g => g.GroupName.Equals(groupName, StringComparison.OrdinalIgnoreCase) && g.Id != groupId);
                     if (nameExists)
-                        return (false, "Bu isimde başka bir grup zaten mevcut.", null);
+                        return (false, "Another group with this name already exists.", null);
 
                     groupToUpdate.GroupName = groupName;
                     groupToUpdate.Description = description;
@@ -63,7 +63,7 @@ namespace AuthKit.Authorization
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("AuthorizationManager.UpdateGroup", ex.Message);
-                return (false, "Grup güncellenirken bir veritabanı hatası oluştu.", null);
+                return (false, "A database error occurred while updating the group.", null);
             }
         }
 
@@ -78,7 +78,7 @@ namespace AuthKit.Authorization
                 {
                     var groupToDelete = connection.Get<AuthKit.Data.Authorization.Group>().FirstOrDefault(g => g.Id == groupId);
                     if (groupToDelete == null)
-                        return (false, "Silinecek grup bulunamadı.");
+                        return (false, "Group to delete not found.");
 
                     var userRelations = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
                                                   .Where(u => u.RefGroupId == groupId).ToList();
@@ -97,7 +97,7 @@ namespace AuthKit.Authorization
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("AuthorizationManager.DeleteGroup", ex.Message);
-                return (false, "Grup ve ilişkili veriler silinirken bir veritabanı hatası oluştu.");
+                return (false, "A database error occurred while deleting the group and its related data.");
             }
         }
     }

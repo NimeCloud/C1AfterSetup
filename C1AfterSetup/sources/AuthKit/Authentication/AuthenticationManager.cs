@@ -43,12 +43,12 @@ namespace AuthKit.Authentication
 
             if (userIdStr == null)
             {
-                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Geçersiz veya süresi dolmuş sıfırlama anahtarı." });
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Invalid or expired reset token." });
             }
 
             if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
             {
-                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Yeni parola en az 6 karakter olmalıdır." });
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "The new password must be at least 6 characters." });
             }
 
             try
@@ -56,7 +56,7 @@ namespace AuthKit.Authentication
                 var user = DataFacade.GetData<AuthKit.Data.Authentication.User>().FirstOrDefault(u => u.Id == userIdStr);
                 if (user == null)
                 {
-                    return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Kullanıcı bulunamadı." });
+                    return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "User not found." });
                 }
 
                 string newHashedPassword = BCrypt.Net.BCrypt.HashPassword(newPassword);
@@ -73,12 +73,12 @@ namespace AuthKit.Authentication
                     }
                 }
 
-                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = true, message = "Parola başarıyla güncellendi." });
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = true, message = "Password updated successfully." });
             }
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("ResetPassword", ex.Message);
-                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Parola güncellenirken bir veritabanı hatası oluştu." });
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "A database error occurred while updating the password." });
             }
         }
 
@@ -127,7 +127,7 @@ namespace AuthKit.Authentication
 
             if (string.IsNullOrWhiteSpace(email))
             {
-                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = true, message = "İstek alındı." });
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = true, message = "Request received." });
             }
 
             try
@@ -157,18 +157,18 @@ namespace AuthKit.Authentication
                             if (resetPage != null)
                                 pagePath = resetPage.UrlTitle;
                             else
-                                Composite.Core.Log.LogError("ForgotPassword", $"Parola sıfırlama sayfası ({ResetPasswordPageId}) bulunamadı.");
+                                Composite.Core.Log.LogError("ForgotPassword", $"Password reset page ({ResetPasswordPageId}) not found.");
                         }
                     }
 
                     string resetLink = $"http://{HttpContext.Current.Request.Url.Authority}/{pagePath}?token={token}";
 
-                    string emailBody = $"Merhaba {user.UserName},\n\nParolanızı sıfırlamak için lütfen şu linke tıklayın: {resetLink}";
+                    string emailBody = $"Hello {user.UserName},\n\nPlease click the following link to reset your password: {resetLink}";
                     Composite.Core.Log.LogInformation("PasswordReset", $"Token for {user.UserName}: {resetLink}");
 
                     if (SendEmailDelegate != null)
                     {
-                        SendEmailDelegate(user.Email, "Parola Sıfırlama Talebi", emailBody);
+                        SendEmailDelegate(user.Email, "Password Reset Request", emailBody);
                     }
                 }
             }
@@ -177,7 +177,7 @@ namespace AuthKit.Authentication
                 Composite.Core.Log.LogError("AuthenticationManager.ForgotPassword", ex.Message);
             }
 
-            return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = true, message = "Eğer girdiğiniz e-posta adresi sistemimizde kayıtlıysa, parola sıfırlama talimatları gönderilmiştir." });
+            return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = true, message = "If the email address you entered is registered in our system, password reset instructions have been sent." });
         }
 
         /// <summary>
@@ -230,16 +230,16 @@ namespace AuthKit.Authentication
             var user = FindUserByUsernameOrEmail(username);
 
             if (user == null)
-                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Kullanıcı adı veya parola hatalı." });
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Invalid username or password." });
 
             if (user.IsTemplate)
-                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Şablon hesaplar ile giriş yapılamaz." });
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Template accounts cannot log in." });
 
             if (string.IsNullOrEmpty(user.PasswordHash))
-                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Bu hesabın parolası ayarlanmamış. Lütfen yönetici ile iletişime geçin." });
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "This account has no password set. Please contact an administrator." });
 
             if (!VerifyPasswordAndUpgrade(user.Id, password, user.PasswordHash))
-                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Kullanıcı adı veya parola hatalı." });
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Invalid username or password." });
 
             PerformLogin(user.Id, rememberMe);
             user.LastSeenOn = DateTime.UtcNow;
@@ -431,7 +431,7 @@ namespace AuthKit.Authentication
                     );
 
                     if (userExists)
-                        return (false, "Bu kullanıcı adı veya e-posta adresi zaten kullanılıyor.", null);
+                        return (false, "This username or email address is already in use.", null);
 
                     string hashedPassword = "";
                     if (!string.IsNullOrWhiteSpace(plainPassword))
@@ -452,7 +452,7 @@ namespace AuthKit.Authentication
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("AuthenticationManager.CreateUser", ex.Message);
-                return (false, "Kullanıcı oluşturulurken bir veritabanı hatası oluştu.", null);
+                return (false, "A database error occurred while creating the user.", null);
             }
         }
 
@@ -465,7 +465,7 @@ namespace AuthKit.Authentication
                 {
                     var userToUpdate = connection.Get<AuthKit.Data.Authentication.User>().FirstOrDefault(u => u.Id == userId);
                     if (userToUpdate == null)
-                        return (false, "Güncellenecek kullanıcı bulunamadı.", null);
+                        return (false, "User to update not found.", null);
 
                     bool userExists = connection.Get<AuthKit.Data.Authentication.User>().Any(u =>
                         u.Id != userId &&
@@ -476,7 +476,7 @@ namespace AuthKit.Authentication
                     );
 
                     if (userExists)
-                        return (false, "Bu kullanıcı adı veya e-posta adresi başka bir kullanıcı tarafından kullanılıyor.", null);
+                        return (false, "This username or email address is used by another user.", null);
 
                     userToUpdate.UserName = username;
                     userToUpdate.Email = email;
@@ -495,14 +495,14 @@ namespace AuthKit.Authentication
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("AuthenticationManager.UpdateUser", ex.Message);
-                return (false, "Kullanıcı güncellenirken bir veritabanı hatası oluştu.", null);
+                return (false, "A database error occurred while updating the user.", null);
             }
         }
 
         public static (bool IsSuccess, string ErrorMessage) ChangePasswordAsAdmin(string userId, string newPlainPassword)
         {
             if (string.IsNullOrWhiteSpace(newPlainPassword) || newPlainPassword.Length < 6)
-                return (false, "Yeni parola en az 6 karakter olmalıdır.");
+                return (false, "The new password must be at least 6 characters.");
 
             try
             {
@@ -510,7 +510,7 @@ namespace AuthKit.Authentication
                 {
                     var userToUpdate = connection.Get<AuthKit.Data.Authentication.User>().FirstOrDefault(u => u.Id == userId);
                     if (userToUpdate == null)
-                        return (false, "Kullanıcı bulunamadı.");
+                        return (false, "User not found.");
 
                     string newHashedPassword = BCrypt.Net.BCrypt.HashPassword(newPlainPassword);
                     userToUpdate.PasswordHash = newHashedPassword;
@@ -521,7 +521,7 @@ namespace AuthKit.Authentication
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("AuthenticationManager.ChangePasswordAsAdmin", ex.Message);
-                return (false, "Parola güncellenirken bir veritabanı hatası oluştu.");
+                return (false, "A database error occurred while updating the password.");
             }
         }
 
@@ -533,7 +533,7 @@ namespace AuthKit.Authentication
                 {
                     var userToDelete = connection.Get<AuthKit.Data.Authentication.User>().FirstOrDefault(u => u.Id == userId);
                     if (userToDelete == null)
-                        return (false, "Silinecek kullanıcı bulunamadı.");
+                        return (false, "User to delete not found.");
 
                     var userGroupRelations = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
                                                        .Where(ug => ug.RefUserId == userId).ToList();
@@ -557,7 +557,7 @@ namespace AuthKit.Authentication
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("AuthenticationManager.DeleteUser", ex.Message);
-                return (false, "Kullanıcı silinirken bir veritabanı hatası oluştu.");
+                return (false, "A database error occurred while deleting the user.");
             }
         }
 
@@ -633,20 +633,20 @@ namespace AuthKit.Authentication
         public static string LoginWithGoogle(string idToken, bool rememberMe)
         {
             if (string.IsNullOrWhiteSpace(idToken))
-                return SerializeOAuthError("Google giris bilgisi alinamadi.");
+                return SerializeOAuthError("Google login information could not be retrieved.");
 
             try
             {
                 var pu = OAuthHelper.ValidateGoogleToken(idToken);
                 if (pu == null || string.IsNullOrEmpty(pu.ProviderUserId))
-                    return SerializeOAuthError("Google kimligi dogrulanamadi.");
+                    return SerializeOAuthError("Google identity could not be verified.");
 
                 return LoginWithProvider("google", pu, rememberMe);
             }
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("AuthenticationManager.LoginWithGoogle", ex.Message);
-                return SerializeOAuthError("Google girisinde bir hata olustu.");
+                return SerializeOAuthError("An error occurred during Google login.");
             }
         }
 
@@ -656,20 +656,20 @@ namespace AuthKit.Authentication
         public static string LoginWithFacebook(string accessToken, bool rememberMe)
         {
             if (string.IsNullOrWhiteSpace(accessToken))
-                return SerializeOAuthError("Facebook giris bilgisi alinamadi.");
+                return SerializeOAuthError("Facebook login information could not be retrieved.");
 
             try
             {
                 var pu = OAuthHelper.ValidateFacebookToken(accessToken);
                 if (pu == null || string.IsNullOrEmpty(pu.ProviderUserId))
-                    return SerializeOAuthError("Facebook kimligi dogrulanamadi.");
+                    return SerializeOAuthError("Facebook identity could not be verified.");
 
                 return LoginWithProvider("facebook", pu, rememberMe);
             }
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("AuthenticationManager.LoginWithFacebook", ex.Message);
-                return SerializeOAuthError("Facebook girisinde bir hata olustu.");
+                return SerializeOAuthError("An error occurred during Facebook login.");
             }
         }
 
@@ -705,7 +705,7 @@ namespace AuthKit.Authentication
             }
 
             if (user == null)
-                return SerializeOAuthError("OAuth kullanicisi olusturulamadi.");
+                return SerializeOAuthError("Could not create the OAuth user.");
 
             if (!user.IsActive)
                 return SerializeOAuthError("Bu hesap aktif degil.");

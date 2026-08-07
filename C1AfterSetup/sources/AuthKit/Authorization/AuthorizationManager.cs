@@ -188,7 +188,7 @@ namespace AuthKit.Authorization
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("UpdateGroupMembersDelta", ex.Message);
-                return (false, "Grup üyeleri güncellenirken bir hata oluştu.");
+                return (false, "An error occurred while updating group members.");
             }
         }
 
@@ -224,7 +224,7 @@ namespace AuthKit.Authorization
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("UpdateUserGroupsDelta", ex.Message);
-                return (false, "Kullanıcının grup üyelikleri güncellenirken bir hata oluştu.");
+                return (false, "An error occurred while updating the user's group memberships.");
             }
         }
         #endregion

@@ -25,7 +25,7 @@ public class AuthApi : IHttpHandler
                 case "logout": resp = DoLogout(context); break;
                 case "forgot": resp = DoForgotPassword(context); break;
                 case "reset": resp = DoResetPassword(context); break;
-                default: resp = new { success = false, error = $"Bilinmeyen action: '{action}'" }; break;
+                default: resp = new { success = false, error = $"Unknown action: '{action}'" }; break;
             }
         }
         catch (Exception ex)
@@ -75,22 +75,22 @@ public class AuthApi : IHttpHandler
 
         return GF();
     }
-    private static object GF() => new { success = false, error = "Kullanici adi veya parola hatali." };
+    private static object GF() => new { success = false, error = "Invalid username or password." };
 
     private object DoRegister(HttpContext ctx)
     {
         var u = ctx.Request.Form["username"]; var e = ctx.Request.Form["email"];
         var p = ctx.Request.Form["password"]; var c = ctx.Request.Form["confirm"];
         if (string.IsNullOrEmpty(u) || string.IsNullOrEmpty(e) || string.IsNullOrEmpty(p))
-            return new { success = false, error = "Tum alanlar zorunludur." };
-        if (p != c) return new { success = false, error = "Parolalar eslesmiyor." };
+            return new { success = false, error = "All fields are required." };
+        if (p != c) return new { success = false, error = "Passwords do not match." };
         var r = AuthKit.Authentication.AuthenticationManager.CreateUser(u, e, p, true, false);
         if (r.IsSuccess) { AuthKit.Authentication.AuthenticationManager.Login(u, p, false); return new { success = true, username = u }; }
-        return new { success = false, error = r.ErrorMessage ?? "Kayit basarisiz." };
+        return new { success = false, error = r.ErrorMessage ?? "Registration failed." };
     }
     private object DoLogout(HttpContext ctx) { AuthKit.Authentication.AuthenticationManager.Logout(); System.Web.Security.FormsAuthentication.SignOut(); return new { success = true }; }
-    private object DoForgotPassword(HttpContext ctx) { var e = ctx.Request.Form["email"] ?? ctx.Request.QueryString["email"]; if (string.IsNullOrEmpty(e)) return new { success = false, error = "E-posta gerekli." }; AuthKit.Authentication.AuthenticationManager.ForgotPassword(e); return new { success = true, message = "Eger bu e-posta kayitliysa, sifirlama baglantisi gonderilmistir." }; }
-    private object DoResetPassword(HttpContext ctx) { try { var t = ctx.Request.Form["token"] ?? ctx.Request.QueryString["token"]; var p = ctx.Request.Form["password"]; var c = ctx.Request.Form["confirm"]; if (string.IsNullOrEmpty(t) || string.IsNullOrEmpty(p)) return new { success = false, error = "Token ve parola gerekli." }; if (p != c) return new { success = false, error = "Parolalar eslesmiyor." }; AuthKit.Authentication.AuthenticationManager.ResetPassword(t, p); return new { success = true }; } catch (Exception ex) { return new { success = false, error = ex.Message }; } }
+    private object DoForgotPassword(HttpContext ctx) { var e = ctx.Request.Form["email"] ?? ctx.Request.QueryString["email"]; if (string.IsNullOrEmpty(e)) return new { success = false, error = "Email is required." }; AuthKit.Authentication.AuthenticationManager.ForgotPassword(e); return new { success = true, message = "If this email is registered, a reset link has been sent." }; }
+    private object DoResetPassword(HttpContext ctx) { try { var t = ctx.Request.Form["token"] ?? ctx.Request.QueryString["token"]; var p = ctx.Request.Form["password"]; var c = ctx.Request.Form["confirm"]; if (string.IsNullOrEmpty(t) || string.IsNullOrEmpty(p)) return new { success = false, error = "Token and password are required." }; if (p != c) return new { success = false, error = "Passwords do not match." }; AuthKit.Authentication.AuthenticationManager.ResetPassword(t, p); return new { success = true }; } catch (Exception ex) { return new { success = false, error = ex.Message }; } }
 
     public bool IsReusable => false;
 }

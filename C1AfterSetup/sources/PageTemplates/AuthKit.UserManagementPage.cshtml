@@ -38,7 +38,7 @@
                     id="pills-real-users-tab" data-bs-toggle="pill" data-bs-target="#pills-real-users" type="button"
                     role="tab">
                     <i class="ti ti-user-circle me-2 fs-6"></i>
-                    <span class="d-none d-md-block">Kullanıcılar</span>
+                    <span class="d-none d-md-block">Users</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -47,23 +47,23 @@
                     id="pills-template-users-tab" data-bs-toggle="pill" data-bs-target="#pills-template-users"
                     type="button" role="tab">
                     <i class="ti ti-file-text me-2 fs-6"></i>
-                    <span class="d-none d-md-block">Şablon Kullanıcılar</span>
+                    <span class="d-none d-md-block">Template Users</span>
                 </button>
             </li>
         </ul>
         <div class="card-body">
             <div class="tab-content" id="pills-tabContent">
                 <div class="tab-pane fade active show" id="pills-real-users" role="tabpanel">
-                    <p class="card-subtitle mb-4">Sisteme giriş yapabilen tüm kullanıcıları buradan yönetebilirsiniz.
+                    <p class="card-subtitle mb-4">Manage all users who can log into the system here.
                     </p>
                     <div class="table-responsive">
                         <table id="real-users-table" class="table table-bordered table-striped" style="width:100%">
                             <thead>
                                 <tr>
                                     <th>Id</th>
-                                    <th>Kullanıcı Adı</th>
-                                    <th>E-posta</th>
-                                    <th>Aktif</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Active</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -71,15 +71,15 @@
                     </div>
                 </div>
                 <div class="tab-pane fade" id="pills-template-users" role="tabpanel">
-                    <p class="card-subtitle mb-4">Yeni kullanıcılar için şablon hesapları buradan yönetebilirsiniz.</p>
+                    <p class="card-subtitle mb-4">Manage template accounts for new users here.</p>
                     <div class="table-responsive">
                         <table id="template-users-table" class="table table-bordered table-striped" style="width:100%">
                             <thead>
                                 <tr>
                                     <th>Id</th>
-                                    <th>Kullanıcı Adı</th>
-                                    <th>E-posta</th>
-                                    <th>Aktif</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Active</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -123,7 +123,7 @@
     // Replaces DataTables' "Loading..." row with a readable message when the API returns
     // 401/403 (auth/permission) or any other non-200 response.
     function showTableLoadError(tableId, xhr) {
-        var msg = 'Tablo yüklenirken bir hata oluştu.';
+        var msg = 'An error occurred while loading the table.';
         if (xhr && xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
         else if (xhr && xhr.responseText) {
             try { var j = JSON.parse(xhr.responseText); if (j && j.error) msg = j.error; } catch (e) { }
@@ -131,7 +131,7 @@
         if (xhr && (xhr.status === 401 || xhr.status === 403)) {
             if (!window.__authkitAuthErrorShown) {
                 window.__authkitAuthErrorShown = true;
-                Swal.fire('Yetki Hatası', msg, 'error');
+                Swal.fire('Permission Error', msg, 'error');
             }
         }
         $('#' + tableId).find('tbody').empty()
@@ -144,28 +144,28 @@
         ];
 
         var buttons = [
-            { text: 'Ekle', name: 'add' },
-            { extend: 'selected', text: 'Düzenle', name: 'edit' },
-            { extend: 'selected', text: 'Sil', name: 'delete' }
+            { text: 'Add', name: 'add' },
+            { extend: 'selected', text: 'Edit', name: 'edit' },
+            { extend: 'selected', text: 'Delete', name: 'delete' }
         ];
 
         if (!isTemplateTable) {
             buttons.push({ className: 'dt-button-divider', text: '', action: function (e) { e.preventDefault(); } });
             buttons.push({
-                extend: 'selected', text: 'Parola Değiştir',
+                extend: 'selected', text: 'Change Password',
                 action: function (e, dt, node, config) {
                     var selectedData = dt.rows({ selected: true }).data()[0];
                     if (!selectedData) return;
                     Swal.fire({
-                        title: selectedData.UserName + ' için yeni parola',
-                        html: '<input type="password" id="swal-input-password" class="swal2-input" placeholder="Yeni Parola">' +
-                            '<input type="password" id="swal-input-confirm" class="swal2-input" placeholder="Parolayı Onayla">',
+                        title: 'New password for ' + selectedData.UserName,
+                        html: '<input type="password" id="swal-input-password" class="swal2-input" placeholder="New Password">' +
+                            '<input type="password" id="swal-input-confirm" class="swal2-input" placeholder="Confirm Password">',
                         focusConfirm: false,
                         preConfirm: function () {
                             var p1 = document.getElementById('swal-input-password').value;
                             var p2 = document.getElementById('swal-input-confirm').value;
-                            if (!p1 || !p2) { Swal.showValidationMessage('Lütfen her iki alanı da doldurun.'); return false; }
-                            if (p1 !== p2) { Swal.showValidationMessage('Parolalar eşleşmiyor!'); return false; }
+                            if (!p1 || !p2) { Swal.showValidationMessage('Please fill in both fields.'); return false; }
+                            if (p1 !== p2) { Swal.showValidationMessage('Passwords do not match!'); return false; }
                             return { newPassword: p1 };
                         }
                     }).then(function (result) {
@@ -173,15 +173,15 @@
                             $.ajax({
                                 url: '/Api/AdminChangePassword', type: 'POST', contentType: 'text/plain; charset=utf-8',
                                 data: JSON.stringify({ userId: selectedData.Id, newPassword: result.value.newPassword }),
-                                success: function () { Swal.fire('Başarılı!', 'Kullanıcının parolası güncellendi.', 'success'); },
-                                error: function (res) { var err = res.responseJSON; Swal.fire('Hata!', err.error || 'Bir hata oluştu.', 'error'); }
+                                success: function () { Swal.fire('Success!', 'User password updated.', 'success'); },
+                                error: function (res) { var err = res.responseJSON; Swal.fire('Error!', err.error || 'An error occurred.', 'error'); }
                             });
                         }
                     });
                 }
             });
             buttons.push({
-                extend: 'selected', text: 'Grupları Yönet',
+                extend: 'selected', text: 'Manage Groups',
                 action: function (e, dt, node, config) {
                     var selectedData = dt.rows({ selected: true }).data()[0];
                     if (selectedData) openUserGroupManagementModal(selectedData.Id, selectedData.UserName);
@@ -203,10 +203,10 @@
             "buttons": buttons,
             "columnDefs": [
                 { "targets": 0, "visible": false, "readonly": true },
-                { "targets": 1, "title": isTemplateTable ? "Şablon Adı" : "Kullanıcı Adı" },
-                { "targets": 2, "title": "E-posta", "type": "email" },
+                { "targets": 1, "title": isTemplateTable ? "Template Name" : "Username" },
+                { "targets": 2, "title": "Email", "type": "email" },
                 {
-                    "targets": 3, "title": "Aktif", "type": "checkbox", "inlineLabel": false,
+                    "targets": 3, "title": "Active", "type": "checkbox", "inlineLabel": false,
                     "render": function (data, type) { return type === 'display' ? '<div class="form-check d-flex justify-content-center"><input class="form-check-input" type="checkbox"' + (data ? ' checked' : '') + ' disabled></div>' : data; }
                 }
             ],
@@ -218,22 +218,22 @@
                 }
                 $.ajax({
                     url: '/Api/AddUser', type: 'POST', contentType: 'text/plain; charset=utf-8', data: JSON.stringify(rowdata),
-                    success: function (data) { success(data); Swal.fire('Başarılı!', 'Kullanıcı eklendi.', 'success'); },
-                    error: function (res) { var err = res.responseJSON || { error: 'İstek işlenirken bir sorun oluştu.' }; Swal.fire('Hata!', err.error, 'error'); }
+                    success: function (data) { success(data); Swal.fire('Success!', 'User added.', 'success'); },
+                    error: function (res) { var err = res.responseJSON || { error: 'There was a problem processing the request.' }; Swal.fire('Error!', err.error, 'error'); }
                 });
             },
             "onEditRow": function (datatable, rowdata, success, error) {
                 $.ajax({
                     url: '/Api/UpdateUser', type: 'POST', contentType: 'text/plain; charset=utf-8', data: JSON.stringify(rowdata),
-                    success: function (data) { success(data); Swal.fire('Başarılı!', 'Kullanıcı güncellendi.', 'success'); },
-                    error: function (res) { var err = res.responseJSON || { error: 'İstek işlenirken bir sorun oluştu.' }; Swal.fire('Hata!', err.error, 'error'); }
+                    success: function (data) { success(data); Swal.fire('Success!', 'User updated.', 'success'); },
+                    error: function (res) { var err = res.responseJSON || { error: 'There was a problem processing the request.' }; Swal.fire('Error!', err.error, 'error'); }
                 });
             },
             "onDeleteRow": function (datatable, rowdata, success, error) {
                 $.ajax({
                     url: '/Api/DeleteUser', type: 'POST', contentType: 'text/plain; charset=utf-8', data: JSON.stringify(rowdata[0]),
-                    success: function (data) { success(data); Swal.fire('Başarılı!', 'Kullanıcı silindi.', 'success'); },
-                    error: function (res) { var err = res.responseJSON || { error: 'İstek işlenirken bir sorun oluştu.' }; Swal.fire('Hata!', err.error, 'error'); }
+                    success: function (data) { success(data); Swal.fire('Success!', 'User deleted.', 'success'); },
+                    error: function (res) { var err = res.responseJSON || { error: 'There was a problem processing the request.' }; Swal.fire('Error!', err.error, 'error'); }
                 });
             }
         });
@@ -257,8 +257,8 @@
             if (isTemplateTabActive) {
                 $('#alteditor-row-IsActive, #alteditor-row-IsTemplate, #alteditor-row-PasswordHash').hide();
             } else {
-                $('#PasswordHash').attr('placeholder', 'Boş bırakılabilir...');
-                var cloneRow = $('<div class="mb-3 row" id="alteditor-clone-user-row" style="display:none;"><label class="col-md-4">Şablondan Kopyala</label><div class="col-md-8"><select id="alteditor-clone-user-select" class="form-select"><option value="">Kopyalama...</option></select></div></div>');
+                $('#PasswordHash').attr('placeholder', 'Can be left blank...');
+                var cloneRow = $('<div class="mb-3 row" id="alteditor-clone-user-row" style="display:none;"><label class="col-md-4">Clone from Template</label><div class="col-md-8"><select id="alteditor-clone-user-select" class="form-select"><option value="">Copy...</option></select></div></div>');
                 modalBody.append(cloneRow);
                 $.ajax({
                     url: '/Api/GetTemplateUsers', type: 'POST', contentType: 'text/plain; charset=utf-8',
@@ -280,7 +280,7 @@
             if (isTemplate) {
                 $('#alteditor-row-IsActive, #alteditor-row-IsTemplate, #alteditor-row-PasswordHash').hide();
             } else {
-                $('#PasswordHash').attr('placeholder', 'Değiştirmek için doldurun');
+                $('#PasswordHash').attr('placeholder', 'Fill in to change');
                 $('#alteditor-row-IsTemplate').hide();
             }
         });
@@ -299,12 +299,12 @@
 
         var modalHtml = '<div class="modal fade" id="userGroupsModal" tabindex="-1">' +
             '<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">' +
-            '<div class="modal-header"><h5 class="modal-title">' + userName + ' - Grup Üyelikleri</h5>' +
+            '<div class="modal-header"><h5 class="modal-title">' + userName + ' - Group Memberships</h5>' +
             '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
             '<div class="modal-body"><table id="groups-for-user-table" class="table table-bordered" style="width:100%">' +
-            '<thead><tr><th></th><th>Grup Adı</th><th>Açıklama</th></tr></thead><tbody></tbody></table></div>' +
-            '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>' +
-            '<button type="button" class="btn btn-primary" id="saveUserGroupsBtn">Kaydet</button></div></div></div></div>';
+            '<thead><tr><th></th><th>Group Name</th><th>Description</th></tr></thead><tbody></tbody></table></div>' +
+            '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>' +
+            '<button type="button" class="btn btn-primary" id="saveUserGroupsBtn">Save</button></div></div></div></div>';
 
         $('#userGroupsModal').remove();
         $('body').append(modalHtml);
@@ -360,8 +360,8 @@
             $.ajax({
                 url: '/Api/UpdateUserGroupsDelta', type: 'POST', contentType: 'text/plain; charset=utf-8',
                 data: JSON.stringify({ userId: userId, groupIdsToAdd: Array.from(changes.added), groupIdsToRemove: Array.from(changes.removed) }),
-                success: function () { modalInstance.hide(); Swal.fire('Başarılı!', 'Grup üyelikleri güncellendi.', 'success'); },
-                error: function () { Swal.fire('Hata!', 'Güncelleme başarısız.', 'error'); },
+                success: function () { modalInstance.hide(); Swal.fire('Success!', 'Group memberships updated.', 'success'); },
+                error: function () { Swal.fire('Error!', 'Update failed.', 'error'); },
                 complete: function () { btn.prop('disabled', false); }
             });
         });

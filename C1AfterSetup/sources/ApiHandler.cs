@@ -296,7 +296,7 @@ public class ApiHandler : IHttpHandler
         if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrWhiteSpace(request.Email))
         {
             context.Response.StatusCode = 400;
-            return new { error = "Kullanıcı adı ve e-posta alanları zorunludur." };
+            return new { error = "Username and email are required." };
         }
 
         var result = AuthKit.Authentication.AuthenticationManager.CreateUser(
@@ -334,7 +334,7 @@ public class ApiHandler : IHttpHandler
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(email))
         {
             context.Response.StatusCode = 400;
-            return new { error = "Kullanıcı adı ve e-posta alanları zorunludur." };
+            return new { error = "Username and email are required." };
         }
 
         var result = AuthKit.Authentication.AuthenticationManager.UpdateUser(id, username, email, password, isActive);
@@ -415,7 +415,7 @@ public class ApiHandler : IHttpHandler
         if (string.IsNullOrWhiteSpace(request.GroupName))
         {
             context.Response.StatusCode = 400;
-            return new { error = "Grup adı boş olamaz." };
+            return new { error = "Group name cannot be empty." };
         }
 
         var result = AuthKit.Authorization.AuthorizationManager.CreateGroup(request.GroupName, request.Description);
@@ -658,7 +658,7 @@ public class ApiHandler : IHttpHandler
         if (string.IsNullOrEmpty(groupId))
         {
             context.Response.StatusCode = 400;
-            return new { error = "Grup ID boş olamaz." };
+            return new { error = "Group ID cannot be empty." };
         }
 
         var result = AuthKit.Authorization.AuthorizationManager.GetPermissionsForGroup(groupId);

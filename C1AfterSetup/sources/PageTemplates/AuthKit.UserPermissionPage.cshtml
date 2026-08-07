@@ -72,19 +72,19 @@
     <div class="card-body">
         <div class="row mb-3">
             <div class="col-md-5">
-                <label for="userSelector" class="form-label">Kullanıcı Seçin</label>
+                <label for="userSelector" class="form-label">Select User</label>
                 <select id="userSelector" class="form-select">
-                    <option selected="selected" disabled="disabled" value="">Kullanıcı seçiniz...</option>
+                    <option selected="selected" disabled="disabled" value="">Select a user...</option>
                 </select>
             </div>
             <div class="col-md-7">
-                <button id="savePermissionsBtn" class="btn btn-primary" disabled="disabled">Yetkileri Kaydet</button>
+                <button id="savePermissionsBtn" class="btn btn-primary" disabled="disabled">Save Permissions</button>
             </div>
         </div>
 
         <div id="permissionsContainer" class="mt-4">
             <div class="d-flex align-items-center justify-content-center" style="min-height: 200px;">
-                <p class="text-muted">Yetkileri görmek için bir kullanıcı seçin.</p>
+                <p class="text-muted">Select a user to view permissions.</p>
             </div>
         </div>
     </div>
@@ -117,7 +117,7 @@
             if (!selectedUserId) return;
 
             savePermissionsBtn.prop('disabled', false);
-            permissionsContainer.html('<div class="text-center p-4">Yetkiler yükleniyor...</div>');
+            permissionsContainer.html('<div class="text-center p-4">Loading permissions...</div>');
 
             $.ajax({
                 url: '/Api/GetEffectivePermissionsForUser', type: 'POST', contentType: 'text/plain; charset=utf-8',
@@ -126,7 +126,7 @@
                     if (response.data) renderPermissions(response.data);
                 },
                 error: function (res) {
-                    var err = res.responseJSON || { error: 'Bilinmeyen hata.' };
+                    var err = res.responseJSON || { error: 'Unknown error.' };
                     permissionsContainer.html('<div class="alert alert-danger">' + err.error + '</div>');
                 }
             });
@@ -134,7 +134,7 @@
 
         function renderPermissions(modules) {
             let html = '<div class="table-responsive"><table class="table table-bordered table-hover"><thead><tr>' +
-                '<th>Yetki</th><th class="text-center" style="width:80px">Miras</th><th class="text-center" style="width:80px">İzin Ver</th><th class="text-center" style="width:80px">Yasakla</th></tr></thead><tbody>';
+                '<th>Permission</th><th class="text-center" style="width:80px">Inherited</th><th class="text-center" style="width:80px">Allow</th><th class="text-center" style="width:80px">Deny</th></tr></thead><tbody>';
 
             modules.forEach(function (module) {
                 html += '<tr class="table-secondary"><td colspan="4"><strong>' + module.ModuleName + '</strong></td></tr>';
@@ -196,18 +196,18 @@
                 permissionsToUpdate.push({ PermissionId: permissionId, State: state });
             });
 
-            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Kaydediliyor...');
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
             $.ajax({
                 url: '/Api/UpdateUserPermissions', type: 'POST', contentType: 'text/plain; charset=utf-8',
                 data: JSON.stringify({ userId: selectedUserId, permissions: permissionsToUpdate, moduleStates: moduleStates })
             }).done(function () {
-                Swal.fire('Başarılı!', 'Kullanıcı yetkileri güncellendi.', 'success');
+                Swal.fire('Success!', 'User permissions updated.', 'success');
                 userSelector.trigger('change');
             }).fail(function (response) {
-                var err = response.responseJSON || { error: 'Beklenmeyen hata' };
-                Swal.fire('Hata!', err.error, 'error');
+                var err = response.responseJSON || { error: 'Unexpected error' };
+                Swal.fire('Error!', err.error, 'error');
             }).always(function () {
-                btn.prop('disabled', false).html('Yetkileri Kaydet');
+                btn.prop('disabled', false).html('Save Permissions');
             });
         });
     });

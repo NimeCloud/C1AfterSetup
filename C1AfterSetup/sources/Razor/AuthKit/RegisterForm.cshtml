@@ -2,7 +2,7 @@
 @using System
 
 @functions {
-    public override string FunctionDescription => "AuthKit kayit formu";
+    public override string FunctionDescription => "AuthKit registration form";
 }
 
 @{
@@ -16,7 +16,7 @@
         var confirm = Request.Form["confirm"];
         if (password != confirm)
         {
-            error = "Parolalar eslesmiyor.";
+            error = "Passwords do not match.";
         }
         else
         {
@@ -33,15 +33,15 @@
     }
 }
 
-<h4 class="mb-1 fw-semibold">Kayıt Ol</h4>
-<p class="mb-3 text-muted">Yeni bir hesap oluşturun</p>
+<h4 class="mb-1 fw-semibold">Sign Up</h4>
+<p class="mb-3 text-muted">Create a new account</p>
 
 @if (success)
 {
-    <div class="alert alert-success py-2">Hesabınız oluşturuldu. Giriş yapabilirsiniz.</div>
+    <div class="alert alert-success py-2">Your account has been created. You can now log in.</div>
     <a class="btn btn-primary w-100"
-       href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/Login")">Giriş
-        Yap</a>
+       href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/Login")">Log
+        In</a>
     }
 
     @if (!success)
@@ -52,25 +52,25 @@
         }
         <form method="post">
             <div class="mb-3">
-                <label class="form-label">Kullanıcı Adı</label>
+                <label class="form-label">Username</label>
                 <input type="text" class="form-control" name="username" required="required" />
             </div>
             <div class="mb-3">
-                <label class="form-label">E-posta</label>
+                <label class="form-label">Email</label>
                 <input type="email" class="form-control" name="email" required="required" />
             </div>
             <div class="mb-3">
-                <label class="form-label">Parola</label>
+                <label class="form-label">Password</label>
                 <input type="password" class="form-control" name="password" required="required" />
             </div>
             <div class="mb-3">
-                <label class="form-label">Parola (Tekrar)</label>
+                <label class="form-label">Password (Repeat)</label>
                 <input type="password" class="form-control" name="confirm" required="required" />
             </div>
-            <button type="submit" class="btn btn-primary w-100">Kayıt Ol</button>
+            <button type="submit" class="btn btn-primary w-100">Sign Up</button>
             <div class="text-center mt-3 small">
-                <a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/Login")">Zaten
-                    hesabınız var mı? Giriş Yapın</a>
+                <a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/Login")">Already
+                    have an account? Log in</a>
                 </div>
             </form>
         }

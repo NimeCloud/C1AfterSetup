@@ -55,19 +55,19 @@
     <div class="card-body">
         <div class="row mb-3">
             <div class="col-md-5">
-                <label for="groupSelector" class="form-label">Grup Seçin</label>
+                <label for="groupSelector" class="form-label">Select Group</label>
                 <select id="groupSelector" class="form-select">
-                    <option selected="selected" disabled="disabled" value="">Grup seçiniz...</option>
+                    <option selected="selected" disabled="disabled" value="">Select a group...</option>
                 </select>
             </div>
             <div class="col-md-7">
-                <button id="savePermissionsBtn" class="btn btn-primary" disabled="disabled">Yetkileri Kaydet</button>
+                <button id="savePermissionsBtn" class="btn btn-primary" disabled="disabled">Save Permissions</button>
             </div>
         </div>
 
         <div id="permissionsContainer" class="mt-4">
             <div class="d-flex align-items-center justify-content-center" style="min-height: 200px;">
-                <p class="text-muted">Yetkileri görmek için bir grup seçin.</p>
+                <p class="text-muted">Select a group to view permissions.</p>
             </div>
         </div>
     </div>
@@ -99,7 +99,7 @@
             if (!selectedGroupId) return;
 
             savePermissionsBtn.prop('disabled', false);
-            permissionsContainer.html('<div class="text-center p-4">Yetkiler yükleniyor...</div>');
+            permissionsContainer.html('<div class="text-center p-4">Loading permissions...</div>');
 
             $.when(
                 $.ajax({ url: '/Api/GetAllModulesAndPermissions', type: 'POST', contentType: 'text/plain; charset=utf-8', data: '{}' }),
@@ -107,13 +107,13 @@
             ).done(function (allRes, groupRes) {
                 renderPermissions(allRes[0].data, groupRes[0].data);
             }).fail(function () {
-                permissionsContainer.html('<div class="alert alert-danger">Yetkiler yüklenirken hata oluştu.</div>');
+                permissionsContainer.html('<div class="alert alert-danger">An error occurred while loading permissions.</div>');
             });
         });
 
         function renderPermissions(modules, assignedPermissions) {
             let html = '<div class="table-responsive"><table class="table table-bordered table-hover"><thead><tr>' +
-                '<th>Yetki</th><th class="text-center" style="width:100px">İzin Ver</th><th class="text-center" style="width:100px">Yasakla</th></tr></thead><tbody>';
+                '<th>Permission</th><th class="text-center" style="width:100px">Allow</th><th class="text-center" style="width:100px">Deny</th></tr></thead><tbody>';
 
             modules.forEach(function (module) {
                 html += '<tr class="table-secondary"><td colspan="3"><strong>' + module.ModuleName + '</strong></td></tr>';
@@ -167,16 +167,16 @@
                 permissionsToUpdate.push({ PermissionId: permissionId, State: state });
             });
 
-            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Kaydediliyor...');
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
             $.ajax({
                 url: '/Api/UpdatePermissionsForGroup', type: 'POST', contentType: 'text/plain; charset=utf-8',
                 data: JSON.stringify({ groupId: selectedGroupId, permissions: permissionsToUpdate })
             }).done(function () {
-                Swal.fire('Başarılı!', 'Grup yetkileri güncellendi.', 'success');
+                Swal.fire('Success!', 'Group permissions updated.', 'success');
             }).fail(function () {
-                Swal.fire('Hata!', 'Yetkiler güncellenirken bir hata oluştu.', 'error');
+                Swal.fire('Error!', 'An error occurred while updating permissions.', 'error');
             }).always(function () {
-                btn.prop('disabled', false).html('Yetkileri Kaydet');
+                btn.prop('disabled', false).html('Save Permissions');
             });
         });
     });

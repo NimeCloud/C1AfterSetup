@@ -1,14 +1,14 @@
 ﻿@inherits RazorFunction
 @*
-    AuthKit Sayfa Kurulum Asistani
-    ==============================
-    Bu Razor fonksiyonunu herhangi bir C1 sayfasina ekleyip calistirarak
-    AuthKit yonetim sayfalarini otomatik olarak C1 sayfa agaciniza ekleyebilirsiniz.
+    AuthKit Page Setup Assistant
+    ============================
+    Add this Razor function to any C1 page and run it to
+    automatically add the AuthKit admin pages to your C1 page tree.
 
-    Calistirma: /page(your-page-id) adresine gidip bu fonksiyonun eklendigi sayfayi goruntuleyin.
-    Calistiktan sonra bu fonksiyonu sayfadan kaldirabilirsiniz.
+    How to run: navigate to /page(your-page-id) and view the page where this function is added.
+    After it runs, you can remove this function from the page.
 
-    Guvenlik: Sadece C1 Administrator grubundaki kullanicilar calistirabilir.
+    Security: Only users in the C1 Administrator group can run it.
 *@
 
 @using Composite.Data
@@ -26,7 +26,7 @@
         }
         catch (Exception ex)
         {
-            <div class="alert alert-danger">AuthKit baslatma hatasi: @ex.Message</div>
+            <div class="alert alert-danger">AuthKit startup error: @ex.Message</div>
             return;
         }
     }
@@ -34,7 +34,7 @@
     // Guvenlik kontrolu
     if (!AuthKit.C1.C1Security.IsCurrentUserInAdministratorsGroup())
     {
-        <div class="alert alert-danger">Bu islem sadece C1 Administratorleri tarafindan yapilabilir.</div>
+        <div class="alert alert-danger">This operation can only be performed by C1 Administrators.</div>
         return;
     }
 
@@ -51,13 +51,13 @@
 <html>
 
 <head>
-    <title>AuthKit Sayfa Kurulumu</title>
+    <title>AuthKit Page Setup</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 </head>
 
 <body class="p-4">
     <div class="container">
-        <h2>AuthKit Sayfa Kurulumu</h2>
+        <h2>AuthKit Page Setup</h2>
 
         @if (!string.IsNullOrEmpty(result))
         {
@@ -67,59 +67,59 @@
         }
 
         <div class="card mb-3">
-            <div class="card-header">Kurulacak Sayfalar</div>
+            <div class="card-header">Pages to Create</div>
             <div class="card-body">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Sayfa</th>
+                            <th>Page</th>
                             <th>URL</th>
-                            <th>Sablon</th>
+                            <th>Template</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Kullanici Yonetimi</td>
+                            <td>User Management</td>
                             <td>/Users</td>
                             <td>AuthKit.UserManagementPage</td>
                         </tr>
                         <tr>
-                            <td>Grup Yonetimi</td>
+                            <td>Group Management</td>
                             <td>/Groups</td>
                             <td>AuthKit.GroupManagementPage</td>
                         </tr>
                         <tr>
-                            <td>Grup Yetkileri</td>
+                            <td>Group Permissions</td>
                             <td>/Group-Permissions</td>
                             <td>AuthKit.GroupPermissionPage</td>
                         </tr>
                         <tr>
-                            <td>Kullanici Yetkileri</td>
+                            <td>User Permissions</td>
                             <td>/User-Permissions</td>
                             <td>AuthKit.UserPermissionPage</td>
                         </tr>
                         <tr>
-                            <td>Giris Yap</td>
+                            <td>Log In</td>
                             <td>/Login</td>
                             <td>AuthKit.AuthLayout (Razor: Login)</td>
                         </tr>
                         <tr>
-                            <td>Kayit Ol</td>
+                            <td>Sign Up</td>
                             <td>/Register</td>
                             <td>AuthKit.AuthLayout (Razor: Register)</td>
                         </tr>
                         <tr>
-                            <td>Sifremi Unuttum</td>
+                            <td>Forgot Password</td>
                             <td>/Forgot-Password</td>
                             <td>AuthKit.AuthLayout (Razor: ForgotPassword)</td>
                         </tr>
                         <tr>
-                            <td>Sifre Sifirla</td>
+                            <td>Reset Password</td>
                             <td>/Reset-Password</td>
                             <td>AuthKit.AuthLayout (Razor: ResetPassword)</td>
                         </tr>
                         <tr>
-                            <td>Cikis Yap</td>
+                            <td>Log Out</td>
                             <td>/Logout</td>
                             <td>AuthKit.AuthLayout (Razor: Logout)</td>
                         </tr>
@@ -129,10 +129,10 @@
         </div>
 
         <a href="?action=create" class="btn btn-primary btn-lg"
-           onclick="return confirm('Sayfalar olusturulacak. Devam etmek istiyor musunuz?');">
-            Sayfalari Olustur
+           onclick="return confirm('Pages will be created. Do you want to continue?');">
+            Create Pages
         </a>
-        <p class="text-muted mt-2">Var olan sayfalar atlanir, sadece eksik olanlar eklenir.</p>
+        <p class="text-muted mt-2">Existing pages are skipped; only missing ones are added.</p>
     </div>
 </body>
 
@@ -154,21 +154,21 @@
         {
             // Sayfa tanimlari: (TemplateId, Title, UrlTitle, MenuTitle)
             var pagesToCreate = new[] {
-                // Yonetim sayfalari
+                // Admin pages
                 (TemplateId: new Guid("f9a2e1d7-8c3b-4b2a-9e1f-1a2b3c4d5e6f"), Title: "Users", UrlTitle: "Users", MenuTitle:
-"Kullanıcılar"),
+"Users"),
                 (TemplateId: new Guid("50562763-9421-40b6-8897-5214ab170051"), Title: "Groups", UrlTitle: "Groups", MenuTitle:
-"Gruplar"),
+"Groups"),
                 (TemplateId: new Guid("ff5a0c90-7f64-4e56-b9b9-1c078276f4c2"), Title: "Group Permissions", UrlTitle:
-"Group-Permissions", MenuTitle: "Grup Yetkileri"),
+"Group-Permissions", MenuTitle: "Group Permissions"),
                 (TemplateId: new Guid("70d2e0d8-d2d1-4209-a5ae-a0bc7d283a9d"), Title: "User Permissions", UrlTitle: "User-Permissions",
-MenuTitle: "Kullanıcı Yetkileri"),
-                // Auth sayfalari
-                (TemplateId: AuthLayoutTemplateId, Title: "Login", UrlTitle: "Login", MenuTitle: "Giriş"),
-                (TemplateId: AuthLayoutTemplateId, Title: "Register", UrlTitle: "Register", MenuTitle: "Kayıt"),
-                (TemplateId: AuthLayoutTemplateId, Title: "Forgot Password", UrlTitle: "Forgot-Password", MenuTitle: "Şifremi Unuttum"),
-                (TemplateId: AuthLayoutTemplateId, Title: "Reset Password", UrlTitle: "Reset-Password", MenuTitle: "Şifre Sıfırla"),
-                (TemplateId: AuthLayoutTemplateId, Title: "Logout", UrlTitle: "Logout", MenuTitle: "Çıkış"),
+MenuTitle: "User Permissions"),
+                // Auth pages
+                (TemplateId: AuthLayoutTemplateId, Title: "Login", UrlTitle: "Login", MenuTitle: "Login"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Register", UrlTitle: "Register", MenuTitle: "Register"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Forgot Password", UrlTitle: "Forgot-Password", MenuTitle: "Forgot Password"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Reset Password", UrlTitle: "Reset-Password", MenuTitle: "Reset Password"),
+                (TemplateId: AuthLayoutTemplateId, Title: "Logout", UrlTitle: "Logout", MenuTitle: "Logout"),
             };
 
             foreach (var page in pagesToCreate)
@@ -177,7 +177,7 @@ MenuTitle: "Kullanıcı Yetkileri"),
                 var existing = conn.Get<IPage>().FirstOrDefault(p => p.UrlTitle == page.UrlTitle);
                 if (existing != null)
                 {
-                    log.AppendLine($"ATLANDI: '{page.Title}' zaten mevcut (ID: {existing.Id})");
+                    log.AppendLine($"SKIPPED: '{page.Title}' already exists (ID: {existing.Id})");
                     continue;
                 }
 
@@ -209,25 +209,25 @@ MenuTitle: "Kullanıcı Yetkileri"),
                     structure.LocalOrdering = 99;
                     conn.Add(structure);
 
-                    log.AppendLine($"OLUSTURULDU: '{page.Title}' → /{page.UrlTitle} (ID: {newPage.Id})");
+                    log.AppendLine($"CREATED: '{page.Title}' -> /{page.UrlTitle} (ID: {newPage.Id})");
 
                     // Login sayfasinin GUID'ini AuthKit'e bildir
                     if (page.UrlTitle == "Login")
                     {
                         AuthKit.Authentication.AuthenticationManager.LoginPageId = newPage.Id;
-                        log.AppendLine($"  → LoginPageId set edildi: {newPage.Id}");
+                        log.AppendLine($"  -> LoginPageId set: {newPage.Id}");
                     }
 
                     // Reset Password sayfasinin GUID'ini AuthKit'e bildir
                     if (page.UrlTitle == "Reset-Password")
                     {
                         AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId = newPage.Id;
-                        log.AppendLine($"  → ResetPasswordPageId set edildi: {newPage.Id}");
+                        log.AppendLine($"  -> ResetPasswordPageId set: {newPage.Id}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    log.AppendLine($"HATA: '{page.Title}' olusturulamadi: {ex.Message}");
+                    log.AppendLine($"ERROR: '{page.Title}' could not be created: {ex.Message}");
                 }
             }
 

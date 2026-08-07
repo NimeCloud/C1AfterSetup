@@ -24,19 +24,19 @@
         {
             public static class Groups
             {
-                [PermissionInfo("Tüm grup yönetimi yetkilerini kapsar.")]
+                [PermissionInfo("Covers all group management permissions.")]
                 public const string Manage = "Auth.Groups.Manage";
 
-                [PermissionInfo("Grupları listeleme ve görüntüleme yetkisi.")]
+                [PermissionInfo("Permission to list and view groups.")]
                 public const string View = "Auth.Groups.View";
 
-                [PermissionInfo("Yeni bir kullanıcı grubu ekleme yetkisi.")]
+                [PermissionInfo("Permission to add a new user group.")]
                 public const string Add = "Auth.Groups.Add";
 
-                [PermissionInfo("Mevcut bir grubun bilgilerini düzenleme yetkisi.")]
+                [PermissionInfo("Permission to edit an existing group's details.")]
                 public const string Edit = "Auth.Groups.Edit";
 
-                [PermissionInfo("Bir kullanıcı grubunu silme yetkisi.")]
+                [PermissionInfo("Permission to delete a user group.")]
                 public const string Delete = "Auth.Groups.Delete";
             }
 
@@ -60,10 +60,10 @@
 
             public static class Permissions
             {
-                [PermissionInfo("Gruplara yetki atama yetkisi.")]
+                [PermissionInfo("Permission to assign permissions to groups.")]
                 public const string Assign = "Auth.Permissions.Assign";
 
-                [PermissionInfo("Kullanıcılara doğrudan yetki atama yetkisi.")]
+                [PermissionInfo("Permission to assign permissions directly to users.")]
                 public const string AssignToUser = "Auth.Permissions.AssignToUser";
             }
         }

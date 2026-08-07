@@ -38,13 +38,13 @@
 }
 
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AuthKit Yönetim Paneli</title>
+    <title>AuthKit Admin Panel</title>
 
     <!-- AuthKit local assets: self-contained, no CDN dependency -->
     <link rel="stylesheet" href="~/assets/authkit/bootstrap/bootstrap.min.css" />
@@ -117,7 +117,7 @@
                 <i class="ti ti-shield-lock me-1"></i>AuthKit
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#authkitNav"
-                    aria-controls="authkitNav" aria-expanded="false" aria-label="Menüyü aç">
+                    aria-controls="authkitNav" aria-expanded="false" aria-label="Toggle menu">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="authkitNav">
@@ -125,25 +125,25 @@
                     <li class="nav-item">
                         <a class="nav-link"
                            href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/Users")">
-                            <i class="ti ti-users me-1"></i>Kullanıcılar
+                            <i class="ti ti-users me-1"></i>Users
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link"
                            href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c3c03000-0000-0000-0000-c3c0c3c0c3c0"), "~/Groups")">
-                            <i class="ti ti-users-group me-1"></i>Gruplar
+                            <i class="ti ti-users-group me-1"></i>Groups
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link"
                            href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d4d04000-0000-0000-0000-d4d0d4d0d4d0"), "~/Group-Permissions")">
-                            <i class="ti ti-shield-check me-1"></i>Grup Yetkileri
+                            <i class="ti ti-shield-check me-1"></i>Group Permissions
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link"
                            href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("e5e05000-0000-0000-0000-e5e0e5e0e5e0"), "~/User-Permissions")">
-                            <i class="ti ti-key me-1"></i>Kullanıcı Yetkileri
+                            <i class="ti ti-key me-1"></i>User Permissions
                         </a>
                     </li>
                 </ul>
@@ -151,7 +151,7 @@
                     <li class="nav-item">
                         <a class="nav-link"
                            href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d0d0a000-0000-0000-0000-d0d0d0d0d0d0"), "~/Logout")">
-                            <i class="ti ti-logout me-1"></i>Çıkış
+                            <i class="ti ti-logout me-1"></i>Logout
                         </a>
                     </li>
                 </ul>
