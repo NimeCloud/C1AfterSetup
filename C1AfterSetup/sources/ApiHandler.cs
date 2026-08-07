@@ -169,6 +169,13 @@ public class ApiHandler : IHttpHandler
 
     private static void Write(HttpContext context, object data)
     {
+        // Permission checks (CheckApiPermission) return an already-serialized JSON string.
+        // Write those verbatim to avoid double-encoding ("{\"error\":\"...\"}").
+        if (data is string)
+        {
+            context.Response.Write((string)data);
+            return;
+        }
         context.Response.Write(JsonConvert.SerializeObject(data));
     }
 

@@ -97,6 +97,7 @@
         margin-top: 1.5rem;
         padding-bottom: 0.5rem;
     }
+
     .dt-button-divider,
     .dt-buttons .dt-button.dt-button-divider:hover {
         background: transparent !important;
@@ -115,6 +116,27 @@
     //<![CDATA[
     // AuthKit User Management — uses free altEditor (DataTables altEditor plugin), NOT commercial
     // DataTables Editor. jQuery/DataTables/altEditor/SweetAlert2 are loaded in AuthKit.PanelLayout <head>.
+
+    // Suppress DataTables' default alert/console Ajax-error popups; errors are handled below.
+    $.fn.dataTable.ext.errMode = 'none';
+
+    // Replaces DataTables' "Loading..." row with a readable message when the API returns
+    // 401/403 (auth/permission) or any other non-200 response.
+    function showTableLoadError(tableId, xhr) {
+        var msg = 'Tablo yüklenirken bir hata oluştu.';
+        if (xhr && xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        else if (xhr && xhr.responseText) {
+            try { var j = JSON.parse(xhr.responseText); if (j && j.error) msg = j.error; } catch (e) { }
+        }
+        if (xhr && (xhr.status === 401 || xhr.status === 403)) {
+            if (!window.__authkitAuthErrorShown) {
+                window.__authkitAuthErrorShown = true;
+                Swal.fire('Yetki Hatası', msg, 'error');
+            }
+        }
+        $('#' + tableId).find('tbody').empty()
+            .append('<tr><td colspan="99" class="text-center text-danger py-4">' + msg + '</td></tr>');
+    }
 
     function initializeDataTable(tableId, apiUrl, isTemplateTable) {
         var columns = [
@@ -137,7 +159,7 @@
                     Swal.fire({
                         title: selectedData.UserName + ' için yeni parola',
                         html: '<input type="password" id="swal-input-password" class="swal2-input" placeholder="Yeni Parola">' +
-                              '<input type="password" id="swal-input-confirm" class="swal2-input" placeholder="Parolayı Onayla">',
+                            '<input type="password" id="swal-input-confirm" class="swal2-input" placeholder="Parolayı Onayla">',
                         focusConfirm: false,
                         preConfirm: function () {
                             var p1 = document.getElementById('swal-input-password').value;
@@ -170,7 +192,8 @@
         $('#' + tableId).DataTable({
             "ajax": {
                 "url": apiUrl, "type": "POST", "contentType": "text/plain; charset=utf-8",
-                "data": function (d) { return JSON.stringify({}); }, "dataSrc": "data"
+                "data": function (d) { return JSON.stringify({}); }, "dataSrc": "data",
+                "error": function (xhr) { showTableLoadError(tableId, xhr); }
             },
             "columns": columns,
             "dom": 'Bfrtip',
@@ -182,8 +205,10 @@
                 { "targets": 0, "visible": false, "readonly": true },
                 { "targets": 1, "title": isTemplateTable ? "Şablon Adı" : "Kullanıcı Adı" },
                 { "targets": 2, "title": "E-posta", "type": "email" },
-                { "targets": 3, "title": "Aktif", "type": "checkbox", "inlineLabel": false,
-                  "render": function (data, type) { return type === 'display' ? '<div class="form-check d-flex justify-content-center"><input class="form-check-input" type="checkbox"' + (data ? ' checked' : '') + ' disabled></div>' : data; } }
+                {
+                    "targets": 3, "title": "Aktif", "type": "checkbox", "inlineLabel": false,
+                    "render": function (data, type) { return type === 'display' ? '<div class="form-check d-flex justify-content-center"><input class="form-check-input" type="checkbox"' + (data ? ' checked' : '') + ' disabled></div>' : data; }
+                }
             ],
             "onAddRow": function (datatable, rowdata, success, error) {
                 rowdata.IsTemplate = isTemplateTable;
@@ -289,14 +314,17 @@
         table = $('#groups-for-user-table').DataTable({
             ajax: {
                 url: '/Api/GetAllGroupsForUserManagement', type: 'POST', contentType: 'text/plain; charset=utf-8',
-                data: function (d) { return JSON.stringify({ UserId: userId, DtRequest: d }); }
+                data: function (d) { return JSON.stringify({ UserId: userId, DtRequest: d }); },
+                error: function (xhr) { showTableLoadError('groups-for-user-table', xhr); }
             },
             columns: [
-                { data: 'id', orderable: false, render: function (d, type, row) {
-                    var gid = row.id ? row.id.toString() : (d ? d.toString() : '');
-                    var isSelected = (initialMemberIds.has(gid) && !changes.removed.has(gid)) || changes.added.has(gid);
-                    return '<input type="checkbox" class="form-check-input dt-checkbox" value="' + gid + '"' + (isSelected ? ' checked' : '') + '>';
-                } },
+                {
+                    data: 'id', orderable: false, render: function (d, type, row) {
+                        var gid = row.id ? row.id.toString() : (d ? d.toString() : '');
+                        var isSelected = (initialMemberIds.has(gid) && !changes.removed.has(gid)) || changes.added.has(gid);
+                        return '<input type="checkbox" class="form-check-input dt-checkbox" value="' + gid + '"' + (isSelected ? ' checked' : '') + '>';
+                    }
+                },
                 { data: 'groupName' }, { data: 'description' }
             ],
             drawCallback: function () {

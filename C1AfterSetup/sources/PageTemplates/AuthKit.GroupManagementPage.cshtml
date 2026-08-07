@@ -56,6 +56,27 @@
     // AuthKit Group Management — uses free altEditor (DataTables altEditor plugin), NOT commercial
     // DataTables Editor. jQuery/DataTables/altEditor/SweetAlert2 are loaded in AuthKit.PanelLayout <head>.
 
+    // Suppress DataTables' default alert/console Ajax-error popups; errors are handled below.
+    $.fn.dataTable.ext.errMode = 'none';
+
+    // Replaces DataTables' "Loading..." row with a readable message when the API returns
+    // 401/403 (auth/permission) or any other non-200 response.
+    function showTableLoadError(tableId, xhr) {
+        var msg = 'Tablo yüklenirken bir hata oluştu.';
+        if (xhr && xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        else if (xhr && xhr.responseText) {
+            try { var j = JSON.parse(xhr.responseText); if (j && j.error) msg = j.error; } catch (e) { }
+        }
+        if (xhr && (xhr.status === 401 || xhr.status === 403)) {
+            if (!window.__authkitAuthErrorShown) {
+                window.__authkitAuthErrorShown = true;
+                Swal.fire('Yetki Hatası', msg, 'error');
+            }
+        }
+        $('#' + tableId).find('tbody').empty()
+            .append('<tr><td colspan="99" class="text-center text-danger py-4">' + msg + '</td></tr>');
+    }
+
     $(function () {
         var buttons = [
             { text: 'Ekle', name: 'add' },
@@ -75,7 +96,10 @@
             dom: 'Bfrtip',
             select: 'single',
             altEditor: true,
-            ajax: { url: '/Api/GetGroups', type: 'POST', contentType: 'text/plain; charset=utf-8', data: function (d) { return JSON.stringify({}); }, dataSrc: 'data' },
+            ajax: {
+                url: '/Api/GetGroups', type: 'POST', contentType: 'text/plain; charset=utf-8', data: function (d) { return JSON.stringify({}); }, dataSrc: 'data',
+                error: function (xhr) { showTableLoadError('groups-table', xhr); }
+            },
             columns: [
                 { data: 'Id', visible: false },
                 { data: 'GroupName', title: 'Grup Adı' },
@@ -148,7 +172,8 @@
             table = $('#users-for-group-table').DataTable({
                 ajax: {
                     url: '/Api/GetUsersForGroupManagement', type: 'POST', contentType: 'text/plain; charset=utf-8',
-                    data: function (d) { return JSON.stringify({ GroupId: groupId, DtRequest: d }); }
+                    data: function (d) { return JSON.stringify({ GroupId: groupId, DtRequest: d }); },
+                    error: function (xhr) { showTableLoadError('users-for-group-table', xhr); }
                 },
                 columns: [
                     { data: 'id', orderable: false, render: function (d) { return '<input type="checkbox" class="dt-checkbox" value="' + d + '">'; } },
