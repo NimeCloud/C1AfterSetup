@@ -171,6 +171,14 @@
         {
             "file": "AuthKit.UserPermissionPage.cshtml",
             "order": 2
+        },
+        {
+            "file": "AdminTools.DataProviderSelector.cshtml",
+            "order": 2
+        },
+        {
+            "file": "AdminTools.DatatypeMigrator.cshtml",
+            "order": 2
         }
     ],
     "razor": [

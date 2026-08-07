@@ -4,7 +4,7 @@
 > yeniden sağlamak. Debugging gotcha'ları, komut kalıpları, sabit değerler ve yöntemler burada toplanır.
 > Yeni agent bu dosyayı **İLK OKUMASI GEREKEN** dosya olarak görmeli.
 >
-> **Last updated:** 2026-08-07 (deploy19: KeyTreeItem FK fix + git commit yöntemi)
+> **Last updated:** 2026-08-07 (deploy24: XHTML CDATA gotcha fixed; CSS/JS wrappers added to mandatory template rules)
 
 ---
 
@@ -97,6 +97,13 @@ Output: `C1AfterSetup/bin/Release/C1AfterSetup.exe`
 C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_compiler.exe -v / -p "r:\deploy5"
 ```
 **Known false positive:** `CS0433: httpheaderscontrol.ascx` duplicated type — this is a C1 CMS pre-existing issue, NOT caused by our changes. The site works fine on IIS/IIS Express.
+
+### Avoid slow VS 2022 "validating directories" on output:
+When you open the deploy output folder in VS 2022 as a Web Site and press Build, VS runs the ASP.NET precompiler (`aspnet_compiler.exe`) which walks the entire directory tree and compiles every template — this is painfully slow on C1 sites (tens of thousands of files). **The build is unnecessary** — C1 runtime-compiles everything anyway.
+
+**Fix:** In VS 2022, open the Web Site **Property Pages → Build** (or MSBuild Options) and **uncheck "Build this project"**. Then F5 / Ctrl+F5 runs without recompilation. If you need a precompile check, run `aspnet_compiler` once from the CLI as a one-time verification.
+
+**If you forget and VS starts validating:** the tree size can be reduced by deleting regenerable runtime folders first (`Cache`, `GeneratedRazorHost`, `LogFiles`, `TreeDefinition`, `App_Data_Composite_*`).
 
 ### Run the tool:
 ```cmd
@@ -216,17 +223,21 @@ From [`Program.cs`](C1AfterSetup/Program.cs:139):
 | 2 | Fresh Prep | `PrepareFreshStep` |
 | 3 | Dependencies | `DeployDependenciesStep` |
 | 4 | Data Types | `DeployDataTypesStep` |
-| 5 | C1 Package | `DeployPackageStep` |
-| 6 | Compile DLL | `CompileGeneratedTypesStep` |
-| 7 | App_Code | `DeployAppCodeStep` |
-| 8 | **Page Templates** | `DeployPageTemplatesStep` |
-| 9 | **AuthKit Pages** | `DeployAuthKitPagesStep` |
-| 10 | Razor | `DeployRazorStep` |
-| 11 | Web.config | `ConfigureWebConfigStep` |
-| 12 | Verify | `VerifyStep` |
-| 13 | Gen. Verify | `VerifyGeneratedTypesStep` |
+| 5 | **Hybrid Data Store** | `ConfigureSqlDataProviderStep` |
+| 6 | C1 Package | `DeployPackageStep` |
+| 7 | Compile DLL | `CompileGeneratedTypesStep` |
+| 8 | App_Code | `DeployAppCodeStep` |
+| 9 | **Page Templates** | `DeployPageTemplatesStep` |
+| 10 | **AuthKit Pages** | `DeployAuthKitPagesStep` |
+| 11 | **Admin Tools** | `DeployAdminToolPagesStep` |
+| 12 | Razor | `DeployRazorStep` |
+| 13 | Web.config | `ConfigureWebConfigStep` |
+| 14 | Verify | `VerifyStep` |
+| 15 | Gen. Verify | `VerifyGeneratedTypesStep` |
 
-**IMPORTANT:** `DeployAuthKitPagesStep` must run AFTER `DeployPageTemplatesStep` (needs template GUIDs) and BEFORE `DeployRazorStep` (Razor functions referenced in placeholder content). Also AFTER `CompileGeneratedTypesStep` because the AuthKit templates reference generated types.
+**IMPORTANT:** `ConfigureSqlDataProviderStep` runs AFTER data types (needs the manifest) and BEFORE C1 package/compile (provider infra must be in place before types are registered). `DeployAuthKitPagesStep` and `DeployAdminToolPagesStep` must run AFTER `DeployPageTemplatesStep` (need template GUIDs) and BEFORE `DeployRazorStep`. Also AFTER `CompileGeneratedTypesStep` because the templates reference generated types.
+
+`DeployAdminToolPagesStep` appends 2 page records (IPage + IPage_Unpublished + IPageStructure + PlaceholderContent) to the DataStore XMLs — mirroring the `DeployAuthKitPagesStep` pattern. The `.cshtml` templates are deployed separately by `DeployPageTemplatesStep` (manifest `order: 2`).
 
 ---
 
@@ -254,6 +265,8 @@ When starting fresh, check these files FIRST:
 - [`C1AfterSetup/C1AfterSetup.csproj`](C1AfterSetup/C1AfterSetup.csproj) — explicit file listing
 - [`C1AfterSetup/Program.cs`](C1AfterSetup/Program.cs) — step pipeline registration
 - [`C1AfterSetup/Config/setup.manifest.json`](C1AfterSetup/Config/setup.manifest.json) — what gets deployed
+- [`plans/c1-cms-hybrid-sql-xml-datastore.md`](plans/c1-cms-hybrid-sql-xml-datastore.md) — hybrid XML+SQL datastore setup guide, provider routing, cross-provider references
+- [`plans/deploy-admin-tools-to-new-site.md`](plans/deploy-admin-tools-to-new-site.md) — new-task prompt: step-by-step instructions for deploying hybrid datastore + admin tool pages to a new C1 CMS site
 
 ---
 
@@ -273,3 +286,114 @@ del "path/to/commit-message.txt"
 ```
 
 **Kesinlikle `-m "..."` kullanma** — `&`, `<`, `>` karakterleri cmd.exe'de kırılır.
+
+---
+
+## 14. Admin Tools Template GUIDs (deploy20)
+
+### Templates
+
+| Template File | TemplateId |
+|---------------|------------|
+| `AdminTools.DataProviderSelector.cshtml` | `A1100000-0000-0000-0000-A110A110A110` |
+| `AdminTools.DatatypeMigrator.cshtml` | `A1200000-0000-0000-0000-A120A120A120` |
+
+### AdminTools Deterministic Page IDs
+
+| Page | PageId |
+|------|--------|
+| Data Provider Default | `A1110000-0000-0000-0000-A111A111A111` |
+| Datatype Migrator | `A1210000-0000-0000-0000-A121A121A121` |
+
+Pages are top-level (ParentId = zero GUID) with LocalOrdering 100/101.
+
+### AdminTools VersionId Gotcha
+
+**Symptom:** `System.FormatException: GUID, 4 çizgi bulunan 32 basamak içermelidir` at `WritePageElements`.
+
+**Root cause:** Trying to generate a deterministic VersionId via `page.PageId.ToString().Substring(0, 28) + "0001"` produces an invalid GUID string (cuts mid-dash).
+
+**Fix:** Use `Guid.NewGuid().ToString()` — same pattern as `DeployAuthKitPagesStep`. The `WritePlaceholderContent` helper reads VersionIds back from the IPage XML, so any unique GUID works; they don't need to be deterministic.
+
+---
+
+## 15. C1 Razor Parser Gotchas (CSHTML Page Templates)
+
+C1 CMS 6.13 uses an older ASP.NET Web Pages Razor parser with strict limitations:
+
+1. **No single-statement `if` in `@{ }` blocks.** Every `if`, `else if`, `foreach` body MUST be enclosed in `{ }`.
+   ```csharp
+   // BROKEN:
+   if (cond) DoSomething();
+   // FIXED:
+   if (cond) { DoSomething(); }
+   ```
+
+2. **No `@if`/`@foreach` nesting inside `@if` bodies after HTML.** Inside a top-level `@if (cond) { }`:
+   - First statement(s) can be bare `if` (no `@`).
+   - After any HTML markup, nested `@if`/`@foreach` may fail with "Unexpected 'if' keyword after '@' character".
+   - **Workaround:** Move ALL HTML rendering to `@functions` helpers returning `IHtmlString`, and call via `@RenderPage(...)` as a single call in markup. This avoids all Razor nesting ambiguities.
+
+3. **`@if/else` WHERE the `else` block starts with HTML then has nested control flow** also breaks similarly.
+
+4. **VS Code Razor linter shows false errors** — it uses ASP.NET Core Razor rules. Trust the C1 compiler output (log file), not VS Code squiggles.
+
+5. **Strict XHTML in preview mode (`/c1mode(unpublished)`): TWO mandatory rules.**
+
+   **5a. `<style>` and `<script>` MUST use CDATA wrappers WITH NEWLINES.** C1 CMS parses the rendered template output as XHTML. Inline CSS with `@keyframes`, CSS variables, or any `;` in `<style>` — and JavaScript with `;`, `&`, `<`, or `>` in `<script>` — cause `System.Xml.XmlException: The ';' character cannot be included in a name`.
+
+   **CRITICAL:** `// <![CDATA[` is a JavaScript single-line comment. Since `StringBuilder.Append()` does NOT add newlines, all JS after it lands on the SAME LINE and is COMMENTED OUT. You MUST add `\n` after the CDATA opening and before the closing.
+
+   ```csharp
+   // CSS (block comment, but newlines keep it readable and safe)
+   sb.Append("<style>\n/* <![CDATA[ */\n");
+   sb.Append("... CSS ...\n");
+   sb.Append("/* ]]> */</style>");
+
+   // JavaScript (SINGLE-LINE COMMENT — newlines are MANDATORY)
+   sb.Append("<script>\n// <![CDATA[\n");
+   sb.Append("... JS ...\n");
+   sb.Append("// ]]></script>");
+   ```
+
+   **5b. ALL `&` in HTML text MUST be escaped as `&`.** Any bare `&` in HTML text nodes (button labels, headings, paragraph text) causes `System.Xml.XmlException: Error parsing EntityName`. This is XHTML 101 — `&` is a special character that starts XML entity references. In C# string literals inside `StringBuilder.Append()`, write `&` instead of `&` for all text content outside CDATA blocks.
+
+   ```csharp
+   // BROKEN:
+   sb.Append("<button>Save & Restart</button>");
+   // FIXED:
+   sb.Append("<button>Save & Restart</button>");
+   ```
+
+**RULE: When creating or modifying ANY .cshtml page template in this project: (a) ALWAYS wrap `<style>` with `/* <![CDATA[ */ ... /* ]]> */`, (b) ALWAYS wrap `<script>` with `// <![CDATA[ ... // ]]>`, (c) NEVER use bare `&` in HTML text content — use the word "and" instead. `&` encoding is unreliable due to tooling write issues (the `&` in `&` gets silently reverted). "and" is XHTML-safe, never breaks, and is better English anyway. These are NOT optional — they prevent runtime `XmlException` in C1's preview mode.**
+
+---
+
+## 16. Quick-Fix Workflow (Patch deployed output without full redeploy)
+
+When an error is found in `r:\deployXY` (e.g., XHTML parsing error in a template, missing file, wrong config), and the fix is small/targeted:
+
+**Apply the fix to BOTH places — the source AND the deployed output:**
+1. Fix the source file in `C1AfterSetup/sources/` (or `C1AfterSetup/Steps/`, etc.) so it's permanent.
+2. Copy the fixed file directly to the corresponding path in `r:\deployXY\` overwriting the broken one.
+
+**When to do this vs. full redeploy:**
+| Scenario | Action |
+|----------|--------|
+| Fixing a single `.cshtml` template | Quick-fix: copy source → deployXY |
+| Fixing a step's C# logic | Quick-fix: rebuild tool, then copy EXE + sources → deployXY (but re-run is safer) |
+| Adding new files / changing pipeline order | Full redeploy to new deployXZ |
+| VS 2022 has deployXY open (locked `.vs` folder) | Quick-fix the data files (PageTemplates, DataStores, Razor, configs) — these are not locked |
+
+**Important:** When VS 2022 has the output folder open, the `.vs` subfolder is locked. You can still overwrite `App_Data/PageTemplates/*.cshtml`, `App_Data/Composite/DataStores/*.xml`, `Web.config`, `App_Data/Razor/*.cshtml`, etc. — these are NOT locked by VS. Only the `.vs\` directory is. If the `-out` target fails because `rmdir` can't delete the directory, the fix is to deploy to a new number (`deployXZ`) OR manually delete everything except `.vs`.
+
+**Example (XHTML `&` fix):**
+```cmd
+:: Fix source:
+::   edit C1AfterSetup\sources\PageTemplates\AdminTools.DataProviderSelector.cshtml
+::   change "Save & Restart" -> "Save & Restart"
+
+:: Quick-fix deployed output (VS 2022 has r:\deploy24 open):
+copy /y "C1AfterSetup\sources\PageTemplates\AdminTools.DataProviderSelector.cshtml" "r:\deploy24\App_Data\PageTemplates\AdminTools.DataProviderSelector.cshtml"
+:: -> VS/IIS Express picks it up on next request; no full redeploy needed.
+```

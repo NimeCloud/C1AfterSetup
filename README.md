@@ -12,6 +12,9 @@ Built for C1 CMS 6.x on .NET Framework 4.8 (Windows). No third-party NuGet depen
 - **Content-aware copies** — only changed files are rewritten (MD5 compare), so re-runs are fast and non-destructive.
 - **KeyTreeStore** — a built-in hierarchical key/value store (`KeyTreeItem` data type) shared across the whole site, with both path-based and flat key/value APIs. Auto-creates a `Root` container when the path starts with `Root/`, and works with or without a Root sentinel.
 - **AuthKit integration** — deploys the AuthKit authorization framework (users, groups, permissions) as App_Code + data types.
+- **Hybrid XML + SQL data store** — dual-provider setup (`DynamicXmlDataProvider` + `DynamicSqlDataProvider`). Most types stay in XML for file-sync portability; selected types live in SQL Server. Includes two admin-tool pages in Content perspective:
+  - **Default Data Provider Selector** — scan providers, view/change the default dynamic-type provider.
+  - **Datatype Migrator** — list generated types with their current provider, selectively migrate types (and data) between XML and SQL using `DataProviderCopier`.
 - **Header cleanup** — optionally removes `Server` and custom response headers via `Web.config`.
 
 ## Requirements
@@ -69,13 +72,17 @@ The pipeline is defined in [`Program.cs`](C1AfterSetup/Program.cs) and each phas
 2. **Fresh prep** (`-fresh` only) — resets the target to a never-started site: strips C1 runtime state and rebuilds it empty (C1 requires these folders to exist). `bin\Composite.Generated.dll` is removed only if it lacks the expected types.
 3. **Dependencies** — copies `sources/bin` + `sources/overrides` to `~/bin`; also ships a captured `sources/generated/Composite.Generated.dll` if present.
 4. **Data types** — deploys the `DataMetaData` XMLs to `~/App_Data/Composite/PendingDataTypes`, and builds a C1 package (`.c1pac`) into `~/App_Data/Composite/AutoInstallPackages`.
-5. **Compile generated types** — deploys the `DataTypeAutoInstaller` `[ApplicationStartup]` hook, starts the site headlessly (IIS Express), the hook registers the pending types via `DynamicTypeManager.CreateStore`, and a graceful recycle makes C1 write `Composite.Generated.dll` with the types. Skips if the DLL already contains them.
-6. **App_Code** — AuthKit + KeyTreeStore + startup sync (initializes permission keys, KeyTreeStore `Root`, and DB↔C# records on first load) to `~/App_Code`.
-7. **Page templates** — deploys templates master-first per manifest `order`.
-8. **Razor** — deploys Razor functions to `~/App_Data/Razor`.
-9. **Web.config** — applies `removeServerHeader`, `customHeaders clear/remove`, module registration, and required assembly references (`System.Net.Http`, `System.Web.Extensions`).
-10. **Verify** — reports every deployed file and the `Web.config` state.
-11. **Generated types verify** — after the first start (online), confirms `Composite.Generated.dll` contains the expected data types, the site is healthy, and C1 logs are clean.
+5. **Hybrid datastore (SQL provider infra)** — configures the dual XML+SQL provider setup: injects the `c1` connection string into `Web.config`, registers `DynamicSqlDataProvider` plugin in `Composite.config` (right after `DynamicXmlDataProvider`), and creates `DynamicSqlDataProvider.config` with an empty `<Interfaces />`. `DynamicXmlDataProvider` remains the default — new types default to XML; existing types stay where they are.
+6. **C1 package** — builds a validated `.c1pac` from the DataMetaData XMLs and places it in `~/App_Data/Composite/AutoInstallPackages` (consumed by C1 on first start).
+7. **Compile generated types** — deploys the `DataTypeAutoInstaller` `[ApplicationStartup]` hook, starts the site headlessly (IIS Express), the hook registers the pending types via `DynamicTypeManager.CreateStore`, and a graceful recycle makes C1 write `Composite.Generated.dll` with the types. Skips if the DLL already contains them.
+8. **App_Code** — AuthKit + KeyTreeStore + startup sync (initializes permission keys, KeyTreeStore `Root`, and DB↔C# records on first load) to `~/App_Code`.
+9. **Page templates** — deploys templates master-first per manifest `order` (AuthKit + AdminTools).
+10. **AuthKit pages** — generates the 10 AuthKit Content-perspective pages (Home + 9 sub-pages: Login, Register, Forgot, Reset, Logout, Users, Groups, Permissions) directly in DataStore XMLs (idempotent — skips existing).
+11. **Admin tool pages** — generates the 2 admin-tool Content-perspective pages (Data Provider Default + Datatype Migrator) in the DataStore XMLs (top-level, idempotent).
+12. **Razor** — deploys Razor functions to `~/App_Data/Razor` (Login, Register, Forgot, Reset, Logout, Setup forms).
+13. **Web.config** — applies `removeServerHeader`, `customHeaders clear/remove`, module registration, and required assembly references (`System.Net.Http`, `System.Web.Extensions`).
+14. **Verify** — reports every deployed file and the `Web.config` state.
+15. **Generated types verify** — after the first start (online), confirms `Composite.Generated.dll` contains the expected data types, the site is healthy, and C1 logs are clean.
 
 Everything to deploy lives in `C1AfterSetup/sources/`, and what maps where is described in `Config/setup.manifest.json`.
 
@@ -122,6 +129,33 @@ KeyTreeStore.KeyTreeStoreManager.AddValue("Guvenlik/IzinVerilenIPler", "1.1.1.1"
 
 Paths use `/` as the separator. A leading `/` is treated as "start from Root"; `Root/…`, `/…` and `…` are equivalent. The `Root` container is auto-created when the path starts with `Root/`, and the system works with or without a Root sentinel (manual parent items from the C1 Data perspective are supported).
 
+## Hybrid Data Store (XML + SQL Server)
+
+C1 CMS 6.x ships with a SQL data provider in the core (`Composite.dll`) — no package needed. This tool configures a hybrid dual-provider setup:
+
+- `DynamicXmlDataProvider` (default) — most types stay in XML `DataStores` for file-sync portability.
+- `DynamicSqlDataProvider` — selected types live in SQL Server. Per-type routing is via each provider's own `<Interfaces>` config file.
+
+See [`plans/c1-cms-hybrid-sql-xml-datastore.md`](plans/c1-cms-hybrid-sql-xml-datastore.md) for the authoritative reference on provider routing, `DataProviderCopier`, and cross-provider references.
+
+### Admin Tool Pages
+
+Two self-rendering page templates are deployed as Content-perspective pages:
+
+| Page | URL | Function |
+|---|---|---|
+| Data Provider Default | `/Data-Provider-Default` | Scan providers, see current default, change default dynamic-type provider |
+| Datatype Migrator | `/Datatype-Migrator` | List generated types with per-type provider listbox; Apply triggers `DataProviderCopier` + config move + `.xml.migrated` rename + recycle |
+
+Both pages are admin-gated (C1 Administrator group). Migration backs up provider configs and XML DataStores before any mutation.
+
+### Extending
+
+The hybrid datastore is extensible:
+- Add more SQL-bound types by temporarily flipping the default provider, creating the type, then flipping back.
+- Migrate existing types at runtime via the Datatype Migrator page.
+- The admin tool pages can be extended with new functionality by adding C# logic to the `@functions` `RenderPage()` method.
+
 ## Building
 
 ```powershell
@@ -131,6 +165,12 @@ Paths use `/` as the separator. A leading `/` is treated as "start from Root"; `
 Or open [`C1AfterSetup.sln`](C1AfterSetup.sln) in Visual Studio and build.
 
 > The tool's own sources are C# 5-compatible so they build with the .NET Framework `MSBuild.exe` without Roslyn. The deployed App_Code sources (AuthKit, KeyTreeStore) are compiled by C1 at runtime.
+
+### Avoid slow VS 2022 build on the output website
+
+The deployed output folder is a C1 CMS Web Site (not a Web Application). When opened in VS 2022 and built, VS runs the ASP.NET precompiler which walks the entire tree and compiles every template — extremely slow on C1 sites. **This build is unnecessary** — C1 compiles everything at runtime.
+
+**Fix:** In VS 2022, open the Web Site **Property Pages → Build** and **uncheck "Build this project"**. F5/Ctrl+F5 will then run without recompilation. For a one-time precompile check, use `aspnet_compiler.exe` from the CLI (see [`AI_CONTEXT.md`](AI_CONTEXT.md) §4).
 
 ## Project structure
 

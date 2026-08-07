@@ -148,6 +148,7 @@ namespace C1AfterSetup
                 new DeployAppCodeStep(),
                 new DeployPageTemplatesStep(),
                 new DeployAuthKitPagesStep(),
+                new DeployAdminToolPagesStep(),
                 new DeployRazorStep(),
                 new ConfigureWebConfigStep(),
                 new VerifyStep(),

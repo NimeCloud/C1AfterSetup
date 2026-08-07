@@ -1,0 +1,387 @@
+@inherits RazorPageTemplate
+@using System
+@using System.Collections.Generic
+@using System.Linq
+@using System.Text
+@using System.Xml.Linq
+@using System.Web
+@using System.Web.Hosting
+@using Composite.Data
+@using Composite.Data.Types
+@using Composite.Core.IO
+
+@functions {
+    public override void Configure()
+    {
+        TemplateId = new Guid("A1200000-0000-0000-0000-A120A120A120");
+        TemplateTitle = "AdminTools.DatatypeMigrator";
+        Layout = null;
+    }
+
+    [Placeholder(Id = "content", Title = "Content", IsDefault = true)]
+    public XhtmlDocument Content { get; set; }
+
+    private const string XmlProvName = "DynamicXmlDataProvider";
+    private const string SqlProvName = "DynamicSqlDataProvider";
+
+    public class TypeRow
+    {
+        public string DataTypeId; public string FullName; public string CurrentProvider; public int RecordCount;
+    }
+
+    public List<TypeRow> GetGeneratedTypes()
+    {
+        var rows = new List<TypeRow>();
+        string metaDir = HostingEnvironment.MapPath("~/App_Data/Composite/DataMetaData");
+        if (!C1Directory.Exists(metaDir)) return rows;
+        var xmlIfaces = LoadProviderInterfacesMap(XmlProvName);
+        var sqlIfaces = LoadProviderInterfacesMap(SqlProvName);
+        var defaultProv = GetDefaultProviderName();
+        foreach (var fp in C1Directory.GetFiles(metaDir, "*.xml"))
+        {
+            try
+            {
+                var xd = XDocument.Load(fp); var d = xd.Root;
+                if (!string.Equals((string)d.Attribute("isCodeGenerated"), "true", StringComparison.OrdinalIgnoreCase)) continue;
+                var dtid = (string)d.Attribute("dataTypeId"); var tmtn = (string)d.Attribute("typeManagerTypeName");
+                string cp = defaultProv; if (xmlIfaces.ContainsKey(dtid)) { cp = XmlProvName; }
+                if (sqlIfaces.ContainsKey(dtid)) { cp = SqlProvName; }
+                int count = 0;
+                if (cp == XmlProvName)
+                {
+                    var xe = LoadXmlProviderAddElement(dtid);
+                    if (xe != null)
+                    {
+                        var fn = (string)xe.Element("Stores")?.Element("add")?.Attribute("filename");
+                        if (!string.IsNullOrEmpty(fn))
+                        {
+                            var sp = HostingEnvironment.MapPath("~/App_Data/Composite/DataStores/" + fn);
+                            if (C1File.Exists(sp))
+                            {
+                                var sx = XDocument.Load(sp); var en = (string)xe.Element("Stores")?.Element("add")?.Attribute("elementName");
+                                count = !string.IsNullOrEmpty(en) ? sx.Root.Elements(en).Count() : sx.Root.Elements().Count();
+                            }
+                        }
+                    }
+                }
+                rows.Add(new TypeRow { DataTypeId = dtid, FullName = tmtn, CurrentProvider = cp, RecordCount = count });
+            }
+            catch { }
+        }
+        return rows.OrderBy(r => r.FullName).ToList();
+    }
+
+    private Dictionary<string, bool> LoadProviderInterfacesMap(string provName)
+    {
+        var m = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            string cr = provName == XmlProvName ? "~/App_Data/Composite/Configuration/DynamicXmlDataProvider.config" :
+"~/App_Data/Composite/Configuration/DynamicSqlDataProvider.config";
+            var p = HostingEnvironment.MapPath(cr); if (!C1File.Exists(p)) return m;
+            var xd = XDocument.Load(p);
+            var ifs = provName == XmlProvName ? xd.Root.Element("Composite.Data.Plugins.XmlDataProviderConfiguration") :
+(XElement)xd.Root.Element("Composite.Data.Plugins.SqlDataProviderConfiguration");
+            var ife = ifs?.Element("Interfaces");
+            if (ife != null) foreach (var e in ife.Elements("add"))
+            {
+                var dt = (string)e.Attribute("dataTypeId"); if (!string.IsNullOrEmpty(dt)) m[dt] = true;
+            }
+        }
+        catch { }
+        return m;
+    }
+
+    private XElement LoadXmlProviderAddElement(string dtid)
+    {
+        try
+        {
+            var xd = XDocument.Load(HostingEnvironment.MapPath("~/App_Data/Composite/Configuration/DynamicXmlDataProvider.config"));
+            var ifs = xd.Root.Element("Composite.Data.Plugins.XmlDataProviderConfiguration"); if (ifs == null) return null;
+            return ifs.Element("Interfaces")?.Elements("add").FirstOrDefault(e => string.Equals((string)e.Attribute("dataTypeId"),
+dtid, StringComparison.OrdinalIgnoreCase));
+        }
+        catch { return null; }
+    }
+
+    private string GetDefaultProviderName()
+    {
+        try
+        {
+            var xd = XDocument.Load(HostingEnvironment.MapPath("~/App_Data/Composite/Composite.config")); var a =
+xd.Root.Element("Composite.Data.Plugins.DataProviderConfiguration")?.Attribute("defaultDynamicTypeDataProviderName");
+            return a?.Value ?? XmlProvName;
+        }
+        catch { return XmlProvName; }
+    }
+
+    public string ApplyMigration(Dictionary<string, string> changes)
+    {
+        var sb = new StringBuilder(); bool anyChange = false;
+        foreach (var kv in changes)
+        {
+            string dtid = kv.Key, tgt = kv.Value;
+            if (tgt != XmlProvName && tgt != SqlProvName) { sb.AppendLine("SKIPPED [" + dtid + "]: Invalid target."); continue; }
+            string src = tgt == XmlProvName ? SqlProvName : XmlProvName;
+
+            XElement srcAdd = null;
+            try
+            {
+                var sp = HostingEnvironment.MapPath(src == XmlProvName ?
+"~/App_Data/Composite/Configuration/DynamicXmlDataProvider.config" :
+"~/App_Data/Composite/Configuration/DynamicSqlDataProvider.config");
+                if (!C1File.Exists(sp)) { sb.AppendLine("ERROR [" + dtid + "]: Source config missing."); continue; }
+                var sx = XDocument.Load(sp);
+                var sif = src == XmlProvName ? sx.Root.Element("Composite.Data.Plugins.XmlDataProviderConfiguration") :
+(XElement)sx.Root.Element("Composite.Data.Plugins.SqlDataProviderConfiguration");
+                var sife = sif?.Element("Interfaces"); if (sife == null) { sb.AppendLine("ERROR [" + dtid + "]: No Interfaces section."); continue; }
+                srcAdd = sife.Elements("add").FirstOrDefault(e => string.Equals((string)e.Attribute("dataTypeId"), dtid,
+StringComparison.OrdinalIgnoreCase));
+                if (srcAdd == null) { sb.AppendLine("ERROR [" + dtid + "]: dataTypeId not found in source config."); continue; }
+            }
+            catch (Exception ex) { sb.AppendLine("ERROR [" + dtid + "]: " + ex.Message); continue; }
+
+            Type dtype = ResolveType(dtid);
+            if (dtype == null) { sb.AppendLine("ERROR [" + dtid + "]: CLR type could not be resolved."); continue; }
+
+            try
+            {
+                var ts = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var sc = HostingEnvironment.MapPath(src == XmlProvName ?
+"~/App_Data/Composite/Configuration/DynamicXmlDataProvider.config" :
+"~/App_Data/Composite/Configuration/DynamicSqlDataProvider.config");
+                var tc = HostingEnvironment.MapPath(tgt == XmlProvName ?
+"~/App_Data/Composite/Configuration/DynamicXmlDataProvider.config" :
+"~/App_Data/Composite/Configuration/DynamicSqlDataProvider.config");
+                C1File.Copy(sc, sc + ".bak_" + ts, true); C1File.Copy(tc, tc + ".bak_" + ts, true);
+                if (src == XmlProvName)
+                {
+                    var fn = (string)srcAdd.Element("Stores")?.Element("add")?.Attribute("filename"); if (!string.IsNullOrEmpty(fn))
+                    {
+                        var stp = HostingEnvironment.MapPath("~/App_Data/Composite/DataStores/" + fn); if (C1File.Exists(stp)) C1File.Copy(stp,
+stp + ".bak_" + ts, true);
+                    }
+                }
+            }
+            catch (Exception ex) { sb.AppendLine("WARNING [" + dtid + "]: Backup failed: " + ex.Message); }
+
+            try
+            {
+                var copier = new DataProviderCopier(src, tgt); copier.IgnorePrimaryKeyViolation = true; copier.UseTransaction = true;
+                copier.Copy(new[] { dtype }); sb.AppendLine("COPIED [" + dtid + "]: " + src + " -> " + tgt);
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine("ERROR [" + dtid + "]: Copy failed: " + ex.Message + " (config unchanged)");
+                continue;
+            }
+
+            XElement tgtAdd = new XElement(srcAdd);
+            var tgtSt = tgtAdd.Element("Stores"); if (tgtSt == null) { tgtSt = new XElement("Stores"); tgtAdd.Add(tgtSt); }
+            tgtSt.RemoveAll();
+            var tn = ResolveTypeManagerTypeName(dtid) ?? dtype.FullName;
+            if (tgt == SqlProvName)
+                tgtSt.Add(new XElement("add", new XAttribute("tableName", tn.Replace('.', '_')), new XAttribute("dataScope", "public"),
+new XAttribute("cultureName", "")));
+            else
+            {
+                var sn = tn.Contains('.') ? tn.Split('.').Last() : tn; tgtSt.Add(new XElement("add", new XAttribute("dataScope",
+"public"), new XAttribute("cultureName", ""), new XAttribute("filename", tn + ".xml"), new XAttribute("elementName",
+sn)));
+            }
+
+            try
+            {
+                var tp = HostingEnvironment.MapPath(tgt == XmlProvName ?
+"~/App_Data/Composite/Configuration/DynamicXmlDataProvider.config" :
+"~/App_Data/Composite/Configuration/DynamicSqlDataProvider.config");
+                var tx = XDocument.Load(tp);
+                var tif = tgt == XmlProvName ? tx.Root.Element("Composite.Data.Plugins.XmlDataProviderConfiguration") :
+(XElement)tx.Root.Element("Composite.Data.Plugins.SqlDataProviderConfiguration");
+                var tife = tif?.Element("Interfaces"); if (tife == null) { tife = new XElement("Interfaces"); tif.Add(tife); }
+                var exi = tife.Elements("add").FirstOrDefault(e => string.Equals((string)e.Attribute("dataTypeId"), dtid,
+StringComparison.OrdinalIgnoreCase));
+                if (exi != null) exi.Remove(); tife.Add(tgtAdd); tx.Save(tp);
+                sb.AppendLine("TARGET [" + dtid + "]: Config entry added to " + tgt);
+            }
+            catch (Exception ex) { sb.AppendLine("ERROR [" + dtid + "]: Target config write failed: " + ex.Message); continue; }
+
+            try
+            {
+                var sp = HostingEnvironment.MapPath(src == XmlProvName ?
+"~/App_Data/Composite/Configuration/DynamicXmlDataProvider.config" :
+"~/App_Data/Composite/Configuration/DynamicSqlDataProvider.config");
+                var sx = XDocument.Load(sp);
+                var sif = src == XmlProvName ? sx.Root.Element("Composite.Data.Plugins.XmlDataProviderConfiguration") :
+(XElement)sx.Root.Element("Composite.Data.Plugins.SqlDataProviderConfiguration");
+                var rm = sif?.Element("Interfaces")?.Elements("add").FirstOrDefault(e =>
+string.Equals((string)e.Attribute("dataTypeId"), dtid, StringComparison.OrdinalIgnoreCase));
+                if (rm != null) { rm.Remove(); sx.Save(sp); sb.AppendLine("SOURCE [" + dtid + "]: Removed from source config."); }
+            }
+            catch (Exception ex) { sb.AppendLine("WARNING [" + dtid + "]: Could not clean source config: " + ex.Message); }
+
+            // Rename orphaned XML DataStore file to .xml.migrated (XML->SQL only)
+            if (src == XmlProvName)
+            {
+                try
+                {
+                    var fn = (string)srcAdd.Element("Stores")?.Element("add")?.Attribute("filename");
+                    if (!string.IsNullOrEmpty(fn))
+                    {
+                        var storePath = HostingEnvironment.MapPath("~/App_Data/Composite/DataStores/" + fn);
+                        if (C1File.Exists(storePath))
+                        {
+                            var migratedPath = storePath + ".migrated";
+                            int counter = 1;
+                            while (C1File.Exists(migratedPath)) { migratedPath = storePath + ".migrated." + counter; counter++; }
+                            C1File.Move(storePath, migratedPath);
+                            sb.AppendLine("FILE [" + dtid + "]: " + fn + " -> " + System.IO.Path.GetFileName(migratedPath));
+                        }
+                    }
+                }
+                catch (Exception ex) { sb.AppendLine("WARNING [" + dtid + "]: File rename failed: " + ex.Message); }
+            }
+            anyChange = true;
+        }
+        if (anyChange)
+        {
+            sb.AppendLine("--- All operations complete. Recycling application... ---");
+            HttpRuntime.UnloadAppDomain();
+        }
+        else sb.AppendLine("--- No changes were made. ---");
+        return sb.ToString();
+    }
+
+    private Type ResolveType(string dtid)
+    {
+        try
+        {
+            foreach (var fp in C1Directory.GetFiles(HostingEnvironment.MapPath("~/App_Data/Composite/DataMetaData"), "*.xml"))
+            {
+                var xd = XDocument.Load(fp); var d = xd.Root; if (!string.Equals((string)d.Attribute("dataTypeId"), dtid,
+StringComparison.OrdinalIgnoreCase)) continue;
+                var tmtn = (string)d.Attribute("typeManagerTypeName"); if (string.IsNullOrEmpty(tmtn)) return null;
+                return Type.GetType(tmtn, false) ?? Type.GetType(tmtn + ", Composite.Generated", false);
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    private string ResolveTypeManagerTypeName(string dtid)
+    {
+        try
+        {
+            foreach (var fp in C1Directory.GetFiles(HostingEnvironment.MapPath("~/App_Data/Composite/DataMetaData"), "*.xml"))
+            {
+                var xd = XDocument.Load(fp); if (string.Equals((string)xd.Root.Attribute("dataTypeId"), dtid,
+StringComparison.OrdinalIgnoreCase)) return (string)xd.Root.Attribute("typeManagerTypeName");
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    public IHtmlString RenderPage(bool isAdmin, string migrateResult, List<TypeRow> typeRows)
+    {
+        var sb = new StringBuilder();
+
+        // CSS
+        sb.Append("<!DOCTYPE html><html><head><title>Datatype Migrator</title><meta charset=\"utf-8\" />");
+        sb.Append("<link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\" /></head>");
+        sb.Append("<style>/* <![CDATA[ */");
+        sb.Append(".recycle-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;flex-direction:column;}");
+        sb.Append(".recycle-overlay .box{background:#fff;padding:30px 50px;border-radius:10px;text-align:center;box-shadow:0 0 30px rgba(0,0,0,0.5);}");
+        sb.Append(".spinner{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 15px auto;}");
+        sb.Append("@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}");
+        sb.Append("/* ]]> */</style>");
+        sb.Append("<body class='p-4'><div class='container'>");
+
+        // Recycle overlay
+        sb.Append("<div id='recycle-overlay' class='recycle-overlay'><div class='box'><div class='spinner'></div><p id='recycle-msg' class='fs-5 fw-bold'></p></div></div>");
+
+        if (!isAdmin)
+        {
+            sb.Append("<div class='alert alert-danger'><h5>Unauthorized Access</h5><p>This page is only accessible to users in the C1 CMS Administrator group. <a href='/Composite/top.aspx' target='_blank'>Sign in via C1 Console</a>.</p></div>");
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty(migrateResult))
+            {
+                var isErr = migrateResult.Contains("ERROR");
+                sb.Append("<div class='alert " + (isErr ? "alert-danger" : "alert-info") + "'><pre style='white-space:pre-wrap'>" +
+System.Net.WebUtility.HtmlEncode(migrateResult) + "</pre></div>");
+            }
+
+            sb.Append("<h2>Datatype Migrator</h2>");
+            sb.Append("<p class='text-muted'>Migrate generated data types between XML and SQL providers. Select the target provider and click <strong>Apply</strong>.<br />");
+            sb.Append("<strong>Warning:</strong> Data is copied and config files are modified. Automatic backups are created.</p>");
+
+            if (typeRows != null && typeRows.Count > 0)
+            {
+                sb.Append("<form id='form-migrate' method='post' action='?action=apply'>");
+                sb.Append("<div class='table-responsive'><table class='table table-sm table-striped align-middle'>");
+                sb.Append("<thead><tr><th>Type</th><th>DataTypeId</th><th>Provider</th><th>Records</th><th>Target</th></tr></thead><tbody>");
+                foreach (var r in typeRows)
+                {
+                    var isXml = r.CurrentProvider == XmlProvName;
+                    var badge = isXml ? "<span class='badge bg-success'>XML</span>" : "<span class='badge bg-info'>SQL</span>";
+                    var cnt = r.RecordCount > 0 || r.CurrentProvider == SqlProvName ? r.RecordCount.ToString() : "-";
+                    var optLab = isXml ? "XML (current)" : "SQL (current)";
+                    var altVal = isXml ? SqlProvName : XmlProvName;
+                    var altLab = isXml ? "SQL Server" : "XML / File";
+                    sb.Append("<tr><td><strong>" + r.FullName + "</strong></td>");
+                    sb.Append("<td><code style='font-size:0.7em'>" + r.DataTypeId + "</code></td>");
+                    sb.Append("<td>" + badge + "</td><td>" + cnt + "</td>");
+                    sb.Append("<td><select name='target_" + r.DataTypeId + "' class='form-select form-select-sm'>");
+                    sb.Append("<option value='' selected=\"selected\">" + optLab + "</option>");
+                    sb.Append("<option value='" + altVal + "'>" + altLab + "</option></select></td></tr>");
+                }
+                sb.Append("</tbody></table></div>");
+                sb.Append("<button type='submit' class='btn btn-danger btn-lg'>Apply (Change Provider + Copy Data)</button></form>");
+            }
+            else if (typeRows != null)
+            {
+                sb.Append("<div class='alert alert-warning'>No generated types found in DataMetaData.</div>");
+            }
+
+            sb.Append("<hr class='my-4' />");
+            sb.Append("<a href='~/Data-Provider-Default' class='btn btn-outline-secondary btn-sm'>Data Provider Default</a> ");
+            sb.Append("<a href='/Composite/top.aspx' target='_blank' class='btn btn-outline-dark btn-sm ms-2'>C1 Console</a>");
+        }
+
+        sb.Append("</div>");
+
+        // JavaScript
+        sb.Append("<script>\n// <![CDATA[\n");
+        sb.Append("function showOverlay(msg){var o=document.getElementById('recycle-overlay');document.getElementById('recycle-msg').textContent=msg;o.style.display='flex';}");
+        sb.Append("function startPolling(ctx){var a=0;var t=setInterval(function(){a++;var x=new XMLHttpRequest();x.open('GET',ctx+'?_poll='+Date.now(),true);x.onload=function(){if(x.status===200){clearInterval(t);var m=document.getElementById('recycle-msg');m.textContent='Complete!';m.style.color='#198754';var s=m.parentElement.querySelector('.spinner');if(s)s.style.display='none';setTimeout(function(){window.location.href=ctx;},2000);}};x.onerror=function(){};x.send();if(a>40){clearInterval(t);var m=document.getElementById('recycle-msg');m.innerHTML='Taking longer than expected. <a href=\"'+ctx+'\">Click here to refresh.</a>';}},2000);}");
+        sb.Append("(function(){var ctx=window.location.href.split('?')[0];var f=document.getElementById('form-migrate');if(f){f.addEventListener('submit',function(e){e.preventDefault();var hasTarget=false;var sels=f.querySelectorAll('select');for(var i=0;i<sels.length;i++){if(sels[i].name.indexOf('target_')===0&&sels[i].value!==''){hasTarget=true;break;}}if(!hasTarget){alert('Please select at least one target provider for migration.');return;}showOverlay('Migrating data...');var x=new XMLHttpRequest();x.open('POST',f.action,true);x.setRequestHeader('Content-Type','application/x-www-form-urlencoded');x.onreadystatechange=function(){if(x.readyState===4||x.status===0||x.status>=500){showOverlay('Restarting, please wait...');startPolling(ctx);}};x.send(new URLSearchParams(new FormData(f)).toString());});}})();");
+        sb.Append("\n// ]]></script>");
+
+        sb.Append("</body></html>");
+        return new HtmlString(sb.ToString());
+    }
+}
+
+@{
+    bool isAdmin = false; try { isAdmin = AuthKit.C1.C1Security.IsCurrentUserInAdministratorsGroup(); } catch { }
+    string action = Request["action"] ?? ""; string migrateResult = ""; List<TypeRow> typeRows = null;
+    if (isAdmin)
+    {
+        if (action == "apply")
+        {
+            var changes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string key in Request.Form.AllKeys ?? new string[0])
+            {
+                if (!key.StartsWith("target_")) { continue; }
+                string tv = (Request.Form[key] ?? "").Trim();
+                if (!string.IsNullOrEmpty(tv)) { changes[key.Substring("target_".Length)] = tv; }
+            }
+            migrateResult = changes.Count > 0 ? ApplyMigration(changes) : "No changes selected.";
+        }
+        typeRows = GetGeneratedTypes();
+    }
+}
+
+@RenderPage(isAdmin, migrateResult, typeRows)

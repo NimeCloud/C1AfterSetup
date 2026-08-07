@@ -1,0 +1,362 @@
+@inherits RazorPageTemplate
+@using System
+@using System.Collections.Generic
+@using System.Linq
+@using System.Text
+@using System.Xml.Linq
+@using System.Web
+@using System.Web.Hosting
+@using System.Configuration
+@using Composite.Data
+@using Composite.Data.Types
+@using Composite.Core.IO
+
+@functions {
+    public override void Configure()
+    {
+        TemplateId = new Guid("A1100000-0000-0000-0000-A110A110A110");
+        TemplateTitle = "AdminTools.DataProviderSelector";
+        Layout = null;
+    }
+
+    [Placeholder(Id = "content", Title = "Content", IsDefault = true)]
+    public XhtmlDocument Content { get; set; }
+
+    private static readonly Guid SelectorPageId = new Guid("A1110000-0000-0000-0000-A111A111A111");
+    private static readonly Guid MigratorPageId = new Guid("A1210000-0000-0000-0000-A121A121A121");
+    private static readonly Guid SelectorTemplateId = new Guid("A1100000-0000-0000-0000-A110A110A110");
+    private static readonly Guid MigratorTemplateId = new Guid("A1200000-0000-0000-0000-A120A120A120");
+    private static readonly Guid DefaultPageTypeId = new Guid("f7869eb2-7369-4eb2-af47-e3be261e92c7");
+    private static readonly Guid RootPageId = new Guid("00000000-0000-0000-0000-000000000000");
+
+    public class ProviderRow { public string Name; public string Type; public int ClaimedCount; }
+
+    public class ConnectionStringParts
+    {
+        public string Server; public string Database; public string Username; public string Password;
+        public bool HasExisting;
+    }
+
+    public List<ProviderRow> GetProviders()
+    {
+        var list = new List<ProviderRow>();
+        try
+        {
+            var xdoc = XDocument.Load(HostingEnvironment.MapPath("~/App_Data/Composite/Composite.config"));
+            var section = xdoc.Root.Element("Composite.Data.Plugins.DataProviderConfiguration");
+            if (section == null) return list;
+            var plugins = section.Element("DataProviderPlugins");
+            if (plugins == null) return list;
+            foreach (var el in plugins.Elements("add"))
+            {
+                var name = (string)el.Attribute("name");
+                if (string.IsNullOrEmpty(name)) continue;
+                list.Add(new ProviderRow { Name = name, Type = (string)el.Attribute("type") ?? "" });
+            }
+            foreach (var row in list)
+            {
+                string cr = null;
+                if (row.Name.Equals("DynamicXmlDataProvider", StringComparison.OrdinalIgnoreCase))
+                    cr = "~/App_Data/Composite/Configuration/DynamicXmlDataProvider.config";
+                else if (row.Name.Equals("DynamicSqlDataProvider", StringComparison.OrdinalIgnoreCase))
+                    cr = "~/App_Data/Composite/Configuration/DynamicSqlDataProvider.config";
+                if (cr == null) continue;
+                try
+                {
+                    var cp = HostingEnvironment.MapPath(cr);
+                    if (!C1File.Exists(cp)) continue;
+                    var cx = XDocument.Load(cp);
+                    var ifs = cx.Root.Element("Composite.Data.Plugins.XmlDataProviderConfiguration")
+                           ?? (XElement)cx.Root.Element("Composite.Data.Plugins.SqlDataProviderConfiguration");
+                    var ife = ifs?.Element("Interfaces");
+                    if (ife != null) row.ClaimedCount = ife.Elements("add").Count();
+                }
+                catch { }
+            }
+        }
+        catch { list.Clear(); }
+        return list;
+    }
+
+    public string GetDefaultProviderName()
+    {
+        try
+        {
+            var xdoc = XDocument.Load(HostingEnvironment.MapPath("~/App_Data/Composite/Composite.config"));
+            var a =
+xdoc.Root.Element("Composite.Data.Plugins.DataProviderConfiguration")?.Attribute("defaultDynamicTypeDataProviderName");
+            return a != null ? a.Value : "(not found)";
+        }
+        catch { return "(unreadable)"; }
+    }
+
+    public string SetDefaultProviderName(string newName)
+    {
+        var valid = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "DynamicXmlDataProvider", "DynamicSqlDataProvider" };
+        if (!valid.Contains(newName)) return "ERROR: Invalid provider: '" + newName + "'";
+        try
+        {
+            var path = HostingEnvironment.MapPath("~/App_Data/Composite/Composite.config");
+            C1File.Copy(path, path + ".bak_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"), true);
+            var xdoc = XDocument.Load(path);
+            xdoc.Root.Element("Composite.Data.Plugins.DataProviderConfiguration").SetAttributeValue("defaultDynamicTypeDataProviderName",
+newName);
+            xdoc.Save(path);
+            HttpRuntime.UnloadAppDomain();
+            return "OK|" + newName;
+        }
+        catch (Exception ex) { return "ERROR: " + ex.Message; }
+    }
+
+    public ConnectionStringParts GetConnectionStringParts()
+    {
+        var parts = new ConnectionStringParts();
+        try
+        {
+            var cs = ConfigurationManager.ConnectionStrings["c1"];
+            if (cs != null && !string.IsNullOrEmpty(cs.ConnectionString))
+            {
+                parts.HasExisting = true;
+                var sb2 = new System.Data.SqlClient.SqlConnectionStringBuilder(cs.ConnectionString);
+                parts.Server = sb2.DataSource ?? "";
+                parts.Database = sb2.InitialCatalog ?? "";
+                parts.Username = sb2.UserID ?? "";
+                parts.Password = sb2.Password ?? "";
+            }
+        }
+        catch { }
+        return parts;
+    }
+
+    public string SetConnectionString(string server, string database, string username, string password)
+    {
+        if (string.IsNullOrWhiteSpace(server)) return "ERROR: Server is required.";
+        if (string.IsNullOrWhiteSpace(database)) return "ERROR: Database is required.";
+        try
+        {
+            var path = HostingEnvironment.MapPath("~/Web.config");
+            C1File.Copy(path, path + ".bak_" + DateTime.Now.ToString("yyyyMMdd_HHmmss"), true);
+            var xdoc = XDocument.Load(path);
+            var connStrings = xdoc.Root.Element("connectionStrings");
+            if (connStrings == null) return "ERROR: No connectionStrings section in Web.config.";
+            var c1El = connStrings.Elements("add").FirstOrDefault(e => (string)e.Attribute("name") == "c1");
+            if (c1El == null) return "ERROR: No 'c1' connection string in Web.config.";
+
+            var sb2 = new System.Data.SqlClient.SqlConnectionStringBuilder();
+            sb2.DataSource = server;
+            sb2.InitialCatalog = database;
+            sb2.UserID = username;
+            sb2.Password = password;
+            sb2.ConnectTimeout = 30;
+            sb2.Encrypt = false;
+            sb2.TrustServerCertificate = false;
+            sb2.ApplicationIntent = System.Data.SqlClient.ApplicationIntent.ReadWrite;
+            sb2.MultiSubnetFailover = false;
+            sb2.MultipleActiveResultSets = true;
+
+            c1El.SetAttributeValue("connectionString", sb2.ConnectionString);
+            xdoc.Save(path);
+            HttpRuntime.UnloadAppDomain();
+            return "OK|" + sb2.DataSource + "/" + sb2.InitialCatalog;
+        }
+        catch (Exception ex) { return "ERROR: " + ex.Message; }
+    }
+
+    public string CreateAdminToolPages()
+    {
+        var sb2 = new StringBuilder();
+        using (var conn = new DataConnection())
+        {
+            var pages = new[] {
+                new { Pid = SelectorPageId, Tid = SelectorTemplateId, T = "Data Provider Default", U = "Data-Provider-Default", M =
+"Data Provider Default" },
+                new { Pid = MigratorPageId, Tid = MigratorTemplateId, T = "Datatype Migrator", U = "Datatype-Migrator", M = "Datatype Migrator" },
+            };
+            foreach (var pg in pages)
+            {
+                var existing = conn.Get<IPage>().FirstOrDefault(p => p.UrlTitle == pg.U);
+                if (existing != null) { sb2.AppendLine("SKIPPED: " + pg.T + " already exists"); continue; }
+                try
+                {
+                    var np = conn.CreateNew<IPage>(); np.Id = pg.Pid; np.TemplateId = pg.Tid; np.PageTypeId = DefaultPageTypeId;
+                    np.Title = pg.T; np.MenuTitle = pg.M; np.UrlTitle = pg.U; np.FriendlyUrl = ""; np.Description = "";
+                    np.SourceCultureName = "tr-TR"; np.PublicationStatus = "published";
+                    np.CreationDate = DateTime.Now; np.ChangeDate = DateTime.Now; np.ChangedBy = "admin"; np.CreatedBy = "admin";
+                    np.VersionId = Guid.NewGuid(); conn.Add(np);
+                    var st = conn.CreateNew<IPageStructure>(); st.Id = pg.Pid; st.ParentId = RootPageId; st.LocalOrdering = 100;
+                    conn.Add(st);
+                    sb2.AppendLine("CREATED: " + pg.T + " -> /" + pg.U);
+                }
+                catch (Exception ex) { sb2.AppendLine("ERROR: " + pg.T + ": " + ex.Message); }
+            }
+        }
+        return sb2.ToString();
+    }
+
+    public IHtmlString RenderPage(bool isAdmin, string defaultProvider, List<ProviderRow> providerRows,
+        string setDefaultResult, string createResult, ConnectionStringParts connParts, string connResult)
+    {
+        var sb = new StringBuilder();
+
+        // CSS
+        sb.Append("<!DOCTYPE html><html><head><title>Data Provider Default</title><meta charset=\"utf-8\" />");
+        sb.Append("<link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\" />");
+        sb.Append("<style>/* <![CDATA[ */");
+        sb.Append(".recycle-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;flex-direction:column;}");
+        sb.Append(".recycle-overlay .box{background:#fff;padding:30px 50px;border-radius:10px;text-align:center;box-shadow:0 0 30px rgba(0,0,0,0.5);}");
+        sb.Append(".spinner{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 15px auto;}");
+        sb.Append("@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}");
+        sb.Append("/* ]]> */</style></head>");
+        sb.Append("<body class='p-4'><div class='container'>");
+
+        // Recycle overlay
+        sb.Append("<div id='recycle-overlay' class='recycle-overlay'><div class='box'><div class='spinner'></div><p id='recycle-msg' class='fs-5 fw-bold'></p></div></div>");
+
+        if (!isAdmin)
+        {
+            sb.Append("<div class='alert alert-danger'><h5>Unauthorized Access</h5><p>This page is only accessible to users in the C1 CMS Administrator group. <a href='/Composite/top.aspx' target='_blank'>Sign in via C1 Console</a>.</p></div>");
+        }
+        else
+        {
+            if (setDefaultResult.StartsWith("OK"))
+            {
+                var n = setDefaultResult.Split('|')[1];
+                sb.Append("<div class='alert alert-success'><h5>Saved and restarting</h5><p>Default provider set to <strong>" + n +
+"</strong>. The application will restart. Wait ~10 seconds and refresh (F5).</p></div>");
+            }
+            else if (!string.IsNullOrEmpty(setDefaultResult))
+            {
+                sb.Append("<div class='alert alert-danger'>" + System.Net.WebUtility.HtmlEncode(setDefaultResult) + "</div>");
+            }
+            if (connResult.StartsWith("OK"))
+            {
+                var n = connResult.Split('|')[1];
+                sb.Append("<div class='alert alert-success'><h5>Connection string saved</h5><p>Updated: <strong>" + n + "</strong>. Restarting...</p></div>");
+            }
+            else if (!string.IsNullOrEmpty(connResult))
+            {
+                sb.Append("<div class='alert alert-danger'>" + System.Net.WebUtility.HtmlEncode(connResult) + "</div>");
+            }
+            if (!string.IsNullOrEmpty(createResult))
+            {
+                sb.Append("<div class='alert alert-info'><pre>" + System.Net.WebUtility.HtmlEncode(createResult) + "</pre></div>");
+            }
+
+            // ---- Default Provider Section ----
+            sb.Append("<h2>Data Provider Default</h2>");
+            sb.Append("<p class='text-muted'>Shows the current default dynamic-type provider. Changes affect <strong>only new</strong> dynamic types — existing types stay where they are.</p>");
+
+            var dpBadge = defaultProvider.Contains("Xml") ? "bg-success" : defaultProvider.Contains("Sql") ? "bg-info" :
+"bg-secondary";
+            sb.Append("<div class='card mb-4'><div class='card-header bg-primary text-white'>Current Default Provider</div><div class='card-body'>");
+            sb.Append("<h3><span class='badge " + dpBadge + " fs-4'>" + defaultProvider + "</span></h3>");
+            sb.Append("<p class='text-muted mt-2'>New data types are written to this provider by default.</p></div></div>");
+
+            // Change default provider form
+            sb.Append("<div class='card mb-4'><div class='card-header'>Change Default Provider</div><div class='card-body'>");
+            sb.Append("<form id='form-setdefault' method='post' action='?action=setdefault'>");
+            sb.Append("<label class='form-label fw-bold'>New Default:</label>");
+            sb.Append("<select name='provider' class='form-select w-auto d-inline-block ms-2'>");
+            sb.Append("<option value='DynamicXmlDataProvider'" + (defaultProvider.Contains("Xml") ? " selected=\"selected\"" : "") +
+">DynamicXmlDataProvider (XML)</option>");
+            sb.Append("<option value='DynamicSqlDataProvider'" + (defaultProvider.Contains("Sql") ? " selected=\"selected\"" : "") +
+">DynamicSqlDataProvider (SQL Server)</option>");
+            sb.Append("</select> <button type='submit' class='btn btn-warning ms-2'>Save and Restart</button></form></div></div>");
+
+            // ---- SQL Connection String Section ----
+            sb.Append("<div class='card mb-4'><div class='card-header'>SQL Connection String</div><div class='card-body'>");
+            if (!connParts.HasExisting)
+            {
+                sb.Append("<div class='alert alert-warning'>No 'c1' connection string found in Web.config. Add one to use SQL storage.</div>");
+            }
+            sb.Append("<p class='text-muted'>Edit the connection string used by the <code>DynamicSqlDataProvider</code>. Saving will restart the application.</p>");
+            sb.Append("<form id='form-connstring' method='post' action='?action=setconnstring'>");
+            sb.Append("<div class='row g-3'>");
+            sb.Append("<div class='col-md-6'><label class='form-label'>Server</label><input type='text' name='server' class='form-control' value='" + System.Net.WebUtility.HtmlEncode(connParts.Server ?? "") + "' placeholder='localhost\\\\SQLEXPRESS' /></div>");
+            sb.Append("<div class='col-md-6'><label class='form-label'>Database</label><input type='text' name='database' class='form-control' value='" + System.Net.WebUtility.HtmlEncode(connParts.Database ?? "") + "' placeholder='C1SqlDataStore' /></div>");
+            sb.Append("<div class='col-md-6'><label class='form-label'>Username</label><input type='text' name='username' class='form-control' value='" + System.Net.WebUtility.HtmlEncode(connParts.Username ?? "") + "' placeholder='SA' /></div>");
+            sb.Append("<div class='col-md-6'><label class='form-label'>Password</label><input type='password' name='password' class='form-control' value='" + System.Net.WebUtility.HtmlEncode(connParts.Password ?? "") + "' /></div>");
+            sb.Append("</div>");
+            sb.Append("<p class='text-muted mt-2 small'>Other parameters (MultipleActiveResultSets=True, Encrypt=False, etc.) are handled automatically.</p>");
+            sb.Append("<button type='submit' class='btn btn-primary mt-2'>Save Connection String and Restart</button></form></div></div>");
+
+            // ---- Provider Table ----
+            sb.Append("<div class='card mb-4'><div class='card-header'>All Registered Data Providers</div><div class='card-body'>");
+            if (providerRows.Count == 0)
+            {
+                sb.Append("<div class='alert alert-warning'>Could not read provider list.</div>");
+            }
+            else
+            {
+                sb.Append("<table class='table table-sm table-striped'><thead><tr><th>Name</th><th>Plugin Type</th><th>Type Count</th><th>Status</th></tr></thead><tbody>");
+                foreach (var r in providerRows)
+                {
+                    var isDef = r.Name.Equals(defaultProvider, StringComparison.OrdinalIgnoreCase);
+                    sb.Append("<tr><td><strong>" + r.Name + "</strong></td><td><code style='font-size:0.8em'>" + r.Type + "</code></td><td>" + r.ClaimedCount + "</td>");
+                    sb.Append("<td>" + (isDef ? "<span class='badge bg-success'>DEFAULT</span>" : "") + "</td></tr>");
+                }
+                sb.Append("</tbody></table>");
+            }
+            sb.Append("</div></div>");
+
+            // Create pages helper
+            sb.Append("<div class='card mb-4'><div class='card-header'>Create Pages</div><div class='card-body'>");
+            sb.Append("<p class='text-muted'>Re-creates the Data Provider Default and Datatype Migrator pages if they are missing.</p>");
+            sb.Append("<a href='?action=create' class='btn btn-secondary' onclick=\"return confirm('Two pages will be created. Continue?');\">Create Pages</a></div></div>");
+
+            // Quick links
+            sb.Append("<div class='card'><div class='card-header'>Quick Links</div><div class='card-body'>");
+            sb.Append("<a href='~/Datatype-Migrator' class='btn btn-outline-secondary btn-sm me-2'>Datatype Migrator</a>");
+            sb.Append("<a href='/Composite/top.aspx' target='_blank' class='btn btn-outline-dark btn-sm'>C1 Console</a></div></div>");
+        }
+
+        sb.Append("</div>");
+
+        // JavaScript
+        sb.Append("<script>\n// <![CDATA[\n");
+        sb.Append("function showOverlay(msg){var o=document.getElementById('recycle-overlay');document.getElementById('recycle-msg').textContent=msg;o.style.display='flex';}");
+        sb.Append("function startPolling(ctx){var a=0;var t=setInterval(function(){a++;var x=new XMLHttpRequest();x.open('GET',ctx+'?_poll='+Date.now(),true);x.onload=function(){if(x.status===200){clearInterval(t);var m=document.getElementById('recycle-msg');m.textContent='Complete!';m.style.color='#198754';var s=m.parentElement.querySelector('.spinner');if(s)s.style.display='none';setTimeout(function(){window.location.href=ctx;},2000);}};x.onerror=function(){};x.send();if(a>40){clearInterval(t);var m=document.getElementById('recycle-msg');m.innerHTML='Taking longer than expected. <a href=\"'+ctx+'\">Click here to refresh.</a>';}},2000);}");
+        sb.Append("(function(){var ctx=window.location.href.split('?')[0];");
+        sb.Append("var f1=document.getElementById('form-setdefault');if(f1){f1.addEventListener('submit',function(e){e.preventDefault();showOverlay('Saving default provider...');var x=new XMLHttpRequest();x.open('POST',f1.action,true);x.setRequestHeader('Content-Type','application/x-www-form-urlencoded');x.onreadystatechange=function(){if(x.readyState===4||x.status===0||x.status>=500){showOverlay('Restarting, please wait...');startPolling(ctx);}};x.send(new URLSearchParams(new FormData(f1)).toString());});}");
+        sb.Append("var f2=document.getElementById('form-connstring');if(f2){f2.addEventListener('submit',function(e){e.preventDefault();showOverlay('Saving connection string...');var x=new XMLHttpRequest();x.open('POST',f2.action,true);x.setRequestHeader('Content-Type','application/x-www-form-urlencoded');x.onreadystatechange=function(){if(x.readyState===4||x.status===0||x.status>=500){showOverlay('Restarting, please wait...');startPolling(ctx);}};x.send(new URLSearchParams(new FormData(f2)).toString());});}");
+        sb.Append("})();");
+        sb.Append("\n// ]]></script>");
+
+        sb.Append("</body></html>");
+        return new HtmlString(sb.ToString());
+    }
+}
+
+@{
+    bool isAdmin = false;
+    try { isAdmin = AuthKit.C1.C1Security.IsCurrentUserInAdministratorsGroup(); } catch { }
+    var defaultProvider = ""; var providerRows = new List<ProviderRow>();
+    var setDefaultResult = ""; var createResult = "";
+    var connParts = GetConnectionStringParts();
+    var connResult = "";
+    string action = Request["action"] ?? "";
+    if (isAdmin)
+    {
+        if (action == "setdefault")
+        {
+            var np = (Request["provider"] ?? "").Trim();
+            if (!string.IsNullOrEmpty(np)) { setDefaultResult = SetDefaultProviderName(np); }
+        }
+        if (action == "setconnstring")
+        {
+            var server = (Request["server"] ?? "").Trim();
+            var database = (Request["database"] ?? "").Trim();
+            var username = (Request["username"] ?? "").Trim();
+            var password = (Request["password"] ?? "");
+            if (!string.IsNullOrEmpty(server) && !string.IsNullOrEmpty(database))
+            {
+                connResult = SetConnectionString(server, database, username, password);
+            }
+        }
+        if (action == "create") { createResult = CreateAdminToolPages(); }
+        defaultProvider = GetDefaultProviderName();
+        providerRows = GetProviders();
+    }
+}
+
+@RenderPage(isAdmin, defaultProvider, providerRows, setDefaultResult, createResult, connParts, connResult)
