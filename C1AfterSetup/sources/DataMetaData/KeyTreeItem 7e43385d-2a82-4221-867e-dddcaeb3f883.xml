@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <DataTypeDescriptor dataTypeId="7e43385d-2a82-4221-867e-dddcaeb3f883" name="KeyTreeItem" namespace="KeyTreeStoreKit.Data" title="KeyTreeStoreKit.Data.KeyTreeItem" isCodeGenerated="true" cachable="false" searchable="false" labelFieldName="Key" typeManagerTypeName="KeyTreeStoreKit.Data.KeyTreeItem">
   <DataAssociations />
   <DataScopes>
@@ -20,8 +20,8 @@
     <DataFieldDescriptor id="89265a1c-8df5-40f4-92d6-6d45b8d46cbf" name="Value" isNullable="true" position="1" groupByPriority="0" inherited="false" instanceType="System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" storeType="PhysicalStoreType='LargeString'" isReadOnly="false">
       <FormRenderingProfile label="Value" helpText="" widgetFunctionMarkup="&lt;f:widgetfunction xmlns:f=&quot;http://www.composite.net/ns/function/1.0&quot; name=&quot;Composite.Widgets.String.TextBox&quot; /&gt;" />
     </DataFieldDescriptor>
-    <DataFieldDescriptor id="eb6056c1-87d0-494e-8545-e19fc0659bc7" name="RefParentId" isNullable="true" position="2" groupByPriority="1" inherited="false" instanceType="System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" storeType="PhysicalStoreType='String'Length='22'" isReadOnly="false" foreignKeyReferenceTypeName="AuthKit.KeyTreeStore.Data.KeyTreeItem">
-      <FormRenderingProfile label="RefParentId" helpText="" widgetFunctionMarkup="&lt;f:widgetfunction xmlns:f=&quot;http://www.composite.net/ns/function/1.0&quot; name=&quot;Composite.Widgets.DataReference.AuthKitKeyTreeStoreDataKeyTreeItem.OptionalSelector&quot; /&gt;" />
+    <DataFieldDescriptor id="eb6056c1-87d0-494e-8545-e19fc0659bc7" name="RefParentId" isNullable="true" position="2" groupByPriority="1" inherited="false" instanceType="System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" storeType="PhysicalStoreType='String'Length='22'" isReadOnly="false" foreignKeyReferenceTypeName="KeyTreeStoreKit.Data.KeyTreeItem">
+      <FormRenderingProfile label="RefParentId" helpText="" widgetFunctionMarkup="&lt;f:widgetfunction xmlns:f=&quot;http://www.composite.net/ns/function/1.0&quot; name=&quot;Composite.Widgets.DataReference.KeyTreeStoreKitDataKeyTreeItem.OptionalSelector&quot; /&gt;" />
     </DataFieldDescriptor>
   </Fields>
 </DataTypeDescriptor>

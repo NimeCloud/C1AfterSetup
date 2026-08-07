@@ -47,7 +47,11 @@ public static class DataTypeAutoInstaller
             try
             {
                 var descriptor = DataTypeDescriptor.FromXml(XElement.Load(file));
-                if (descriptor == null) continue;
+                if (descriptor == null)
+                {
+                    Log("DataTypeAutoInstaller: DataTypeDescriptor.FromXml null döndü: " + Path.GetFileName(file));
+                    continue;
+                }
 
                 bool created = false;
                 try
@@ -56,9 +60,10 @@ public static class DataTypeAutoInstaller
                     DynamicTypeManager.CreateStore(descriptor, true);
                     created = true;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Store zaten var ya da tip DLL'de kayıtlı olabilir; EnsureCreateStore ile güvenceye al.
+                    // Store zaten var ya da tip DLL'de kayıtlı olabilir
+                    Log("DataTypeAutoInstaller: CreateStore HATA (" + Path.GetFileName(file) + "): " + ex.Message);
                 }
 
                 if (!created)
@@ -69,14 +74,38 @@ public static class DataTypeAutoInstaller
                         Type iface = existing.GetInterfaceType();
                         if (iface != null) DynamicTypeManager.EnsureCreateStore(iface);
                     }
+                    else
+                    {
+                        Log("DataTypeAutoInstaller: TryGetDataTypeDescriptor false, tip bulunamadı: " + descriptor.Name);
+                    }
                 }
 
                 File.Delete(file);
+                Log("DataTypeAutoInstaller: " + Path.GetFileName(file) + " başarıyla işlendi.");
             }
-            catch
+            catch (Exception ex)
             {
                 // Başarısız XML'leri klasörde bırak; tekrar denemesi için.
+                Log("DataTypeAutoInstaller: GENEL HATA (" + Path.GetFileName(file) + "): " + ex.ToString());
             }
+        }
+    }
+
+    private static void Log(string message)
+    {
+        try
+        {
+            string logDir = HostingEnvironment.MapPath("~/App_Data/Composite/LogFiles");
+            if (!string.IsNullOrEmpty(logDir))
+            {
+                Directory.CreateDirectory(logDir);
+                string logPath = Path.Combine(logDir, "DataTypeAutoInstaller.log");
+                File.AppendAllText(logPath, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + message + Environment.NewLine);
+            }
+        }
+        catch
+        {
+            // log yazılamazsa sessizce devam et
         }
     }
 }
