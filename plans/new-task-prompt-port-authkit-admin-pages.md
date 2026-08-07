@@ -45,5 +45,5 @@ Verify: aspnet_compiler clean, C1 log clean, browse each admin page logged-in as
 2. **AuthKit admin pages use auth-only checks** (`currentUser == null`) + `?redirect=` param.
 3. **All `.cshtml`: strict XHTML** — CDATA-wrapped CSS/JS with newlines, no bare `&`, no bare
    boolean attributes, **UTF-8 with BOM**.
-4. **Quick-fix workflow**: for small fixes, patch BOTH `sources/` and the deployed output;
+4. **Live-fix workflow**: for small fixes, patch BOTH `sources/` and the deployed output;
    full redeploy only for new files/pipeline changes. VS 2022 may lock `.vs` only.

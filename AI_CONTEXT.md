@@ -382,7 +382,7 @@ C1 CMS 6.13 uses an older ASP.NET Web Pages Razor parser with strict limitations
 
 ---
 
-## 16. Quick-Fix Workflow (Patch deployed output without full redeploy)
+## 16. Live-Fix Workflow (Patch deployed output without full redeploy)
 
 When an error is found in `r:\deployXY` (e.g., XHTML parsing error in a template, missing file, wrong config), and the fix is small/targeted:
 
@@ -393,10 +393,10 @@ When an error is found in `r:\deployXY` (e.g., XHTML parsing error in a template
 **When to do this vs. full redeploy:**
 | Scenario | Action |
 |----------|--------|
-| Fixing a single `.cshtml` template | Quick-fix: copy source → deployXY |
-| Fixing a step's C# logic | Quick-fix: rebuild tool, then copy EXE + sources → deployXY (but re-run is safer) |
+| Fixing a single `.cshtml` template | Live-fix: copy source → deployXY |
+| Fixing a step's C# logic | Live-fix: rebuild tool, then copy EXE + sources → deployXY (but re-run is safer) |
 | Adding new files / changing pipeline order | Full redeploy to new deployXZ |
-| VS 2022 has deployXY open (locked `.vs` folder) | Quick-fix the data files (PageTemplates, DataStores, Razor, configs) — these are not locked |
+| VS 2022 has deployXY open (locked `.vs` folder) | Live-fix the data files (PageTemplates, DataStores, Razor, configs) — these are not locked |
 
 **Important:** When VS 2022 has the output folder open, the `.vs` subfolder is locked. You can still overwrite `App_Data/PageTemplates/*.cshtml`, `App_Data/Composite/DataStores/*.xml`, `Web.config`, `App_Data/Razor/*.cshtml`, etc. — these are NOT locked by VS. Only the `.vs\` directory is. If the `-out` target fails because `rmdir` can't delete the directory, the fix is to deploy to a new number (`deployXZ`) OR manually delete everything except `.vs`.
 
@@ -406,7 +406,7 @@ When an error is found in `r:\deployXY` (e.g., XHTML parsing error in a template
 ::   edit C1AfterSetup\sources\PageTemplates\AdminTools.DataProviderSelector.cshtml
 ::   change "Save & Restart" -> "Save & Restart"
 
-:: Quick-fix deployed output (VS 2022 has r:\deploy24 open):
+:: Live-fix deployed output (VS 2022 has r:\deploy24 open):
 copy /y "C1AfterSetup\sources\PageTemplates\AdminTools.DataProviderSelector.cshtml" "r:\deploy24\App_Data\PageTemplates\AdminTools.DataProviderSelector.cshtml"
 :: -> VS/IIS Express picks it up on next request; no full redeploy needed.
 ```
