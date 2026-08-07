@@ -2,7 +2,7 @@
 
 > **Purpose:** Automate post-installation additions to a C1 CMS Website: AuthKit data types, App_Code modules, page templates, Razor functions, KeyTreeStore, Web.config hardening — with zero manual steps.
 >
-> **Last updated:** 2026-08-07 (deploy21: AdminTools pages now deployed via DeployAdminToolPagesStep in pipeline; docs synchronized)
+> **Last updated:** 2026-08-07 (AuthKit first-user bootstrap: auto-seed groups/permissions, first C1 user becomes a System.Administrators shadow user with full admin rights; admin permission grants seeded)
 
 ---
 
@@ -158,6 +158,7 @@ AuthKit.Data.Authorization.UserModuleState
   - `AuthKit.Authorization` — [`AuthorizationManager.cs`](C1AfterSetup/sources/AuthKit/Authorization/AuthorizationManager.cs), `GroupManagement.cs`, `KeyInitializer.cs`, `PermissionManagement.cs`, `PermissionSyncService.cs`, `Models/`
   - `AuthKit.C1` — [`C1Security.cs`](C1AfterSetup/sources/AuthKit/C1/C1Security.cs), [`C1UrlHelper.cs`](C1AfterSetup/sources/AuthKit/C1/C1UrlHelper.cs)
   - `AuthKit.Startup` — [`AuthStartupHandler.cs`](C1AfterSetup/sources/AuthKit/Startup/AuthStartupHandler.cs)
+- **First-user bootstrap:** on `AuthStartupHandler.Initialize()` the groups defined in `GroupKeys` are seeded (including `System.Administrators`), `PermissionSyncService` grants every permission to the admin group, and the **first C1 user** who logs in via AuthKit is created as a **shadow user** and auto-joined into `System.Administrators` (any C1 Administrator also gets this on login / admin-page visit). That user therefore has full AuthKit administration rights — the system is never left without an administrator.
 - **References to KeyTreeStoreKit:** Uses `global::KeyTreeStoreKit.KeyTreeStoreManager` to avoid namespace collision (AuthKit.KeyTreeStore would resolve ambiguously)
 
 ### Cross-reference pattern:
