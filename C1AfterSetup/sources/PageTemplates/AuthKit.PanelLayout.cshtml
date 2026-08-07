@@ -22,6 +22,12 @@
     var tablerIconsUrl = "https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css";
     // Oturum kontrolü - giriş yapılmamışsa login sayfasına yönlendir
     var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
+    // Ensure the current user's admin membership so the first administrator is never locked
+    // out (idempotent; safe when the admin group is empty or the C1 user is a C1 Administrator).
+    if (currentUser != null)
+    {
+        try { AuthKit.Authorization.AuthorizationManager.EnsureAdministratorMembership(currentUser.Id); } catch { }
+    }
     if (currentUser == null)
     {
         var loginPageId = AuthKit.Authentication.AuthenticationManager.LoginPageId;
