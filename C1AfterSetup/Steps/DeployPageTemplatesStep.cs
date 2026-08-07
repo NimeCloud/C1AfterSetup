@@ -34,6 +34,21 @@ namespace C1AfterSetup.Steps
                     if (!File.Exists(dst) || !FileSyncUtil.FilesEqual(src, dst)) return false;
                 }
             }
+
+            // Statik assets (CSS/JS): manifest Assets eşlemelerini doğrula
+            foreach (var a in context.Manifest.Assets)
+            {
+                string srcA = context.ResolveSource(a.Source);
+                string dstA = context.ResolveSite(a.Target);
+                if (!Directory.Exists(srcA)) continue;
+                if (!Directory.Exists(dstA)) return false;
+                foreach (string file in Directory.GetFiles(srcA, "*", SearchOption.AllDirectories))
+                {
+                    string rel = file.Substring(Path.GetFullPath(srcA).Length).TrimStart('\\', '/');
+                    string dstF = Path.Combine(dstA, rel);
+                    if (!File.Exists(dstF) || !FileSyncUtil.FilesEqual(file, dstF)) return false;
+                }
+            }
             return true;
         }
 
@@ -82,6 +97,24 @@ namespace C1AfterSetup.Steps
                 }
             }
 
+            // 2) Statik assets (CSS/JS): manifest Assets eşlemelerini ~/ altına kopyala
+            foreach (var a in context.Manifest.Assets)
+            {
+                string srcA = context.ResolveSource(a.Source);
+                string dstA = context.ResolveSite(a.Target);
+                if (!Directory.Exists(srcA))
+                {
+                    context.Warn("  Assets kaynağı yok: " + a.Source);
+                    continue;
+                }
+                int n = FileSyncUtil.SyncDirectory(srcA, dstA);
+                updated += n;
+                if (n > 0)
+                    context.Log("  + assets: " + a.Source + " -> " + a.Target + " (" + n + " dosya güncellendi)");
+                else
+                    context.Log("  = assets: " + a.Source + " zaten güncel");
+            }
+
             if (context.Mode == RunMode.Online)
             {
                 var monitor = new CompilationMonitor(context);
@@ -100,6 +133,8 @@ namespace C1AfterSetup.Steps
         {
             foreach (var t in context.Manifest.Templates.OrderBy(t => t.Order))
                 context.Log("  - order " + t.Order + ": " + t.File);
+            foreach (var a in context.Manifest.Assets)
+                context.Log("  - assets: " + a.Source + " -> " + a.Target);
         }
     }
 }

@@ -1,0 +1,23 @@
+{
+    "modalClose": "Kapat",
+    "edit": {
+        "title": "Düzenle",
+        "button": "Düzenle"
+    },
+    "add": {
+        "title": "Yeni",
+        "button": "Oluştur"
+    },
+    "delete": {
+        "title": "Sil",
+        "button": "Sil"
+    },
+    "success": "İşlem Tamamlandı.",
+    "error": {
+        "message": "Beklenmeyen bir hata oluştu.",
+        "label": "Hata",
+        "responseCode": "Yanıt kodu:",
+        "required": "Zorunlu alan",
+        "unique": "Bu değer zaten mevcut"
+    }
+}

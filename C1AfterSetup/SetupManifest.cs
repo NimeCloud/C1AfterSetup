@@ -108,6 +108,9 @@ namespace C1AfterSetup
         public bool RoslynEnabled { get; set; }
         public WebConfigSettings WebConfig { get; set; }
 
+        /// <summary>Statik CSS/JS varlıkları (kaynak dizin -> hedef dizin eşlemesi).</summary>
+        public List<FileMapping> Assets { get; set; }
+
         /// <summary>
         /// İlk başlatma sonrası C1'in üretmesi beklenen tam nitelikli veri tipi adları
         /// (ör. "AuthKit.KeyTreeStore.Data.KeyTreeItem"). Doğrulama adımı, bu tiplerin
@@ -125,6 +128,7 @@ namespace C1AfterSetup
             BinDependencies = new List<string>();
             WebConfig = new WebConfigSettings();
             GeneratedTypes = new List<string>();
+            Assets = new List<FileMapping>();
         }
 
         public static SetupManifest Load(string path)

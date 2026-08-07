@@ -184,6 +184,12 @@
             "order": 2
         }
     ],
+    "assets": [
+        {
+            "source": "assets/authkit",
+            "target": "~/assets/authkit"
+        }
+    ],
     "razor": [
         {
             "source": "Razor/AuthKit",

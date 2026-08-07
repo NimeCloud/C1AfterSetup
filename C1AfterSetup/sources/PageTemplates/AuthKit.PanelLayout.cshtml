@@ -46,48 +46,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AuthKit Yönetim Paneli</title>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.min.css" />
-    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.bootstrap5.min.css" />
-    <link rel="stylesheet" href="https://cdn.datatables.net/select/2.0.3/css/select.bootstrap5.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+    <!-- AuthKit local assets: self-contained, no CDN dependency -->
+    <link rel="stylesheet" href="~/assets/authkit/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/assets/authkit/bootstrap/dataTables.bootstrap5.min.css" />
+    <link rel="stylesheet" href="~/assets/authkit/datatables/dataTables.buttons.min.css" />
+    <link rel="stylesheet" href="~/assets/authkit/datatables/dataTables.select.min.css" />
+    <link rel="stylesheet" href="~/assets/authkit/sweetalert2/sweetalert2.min.css" />
     <link rel="stylesheet" href="@tablerIconsUrl" />
 
+    <!-- AuthKit local scripts: loaded in HEAD so child-page scripts see jQuery/DataTables/altEditor -->
+    <script src="~/assets/authkit/jquery-3.7.1.min.js"></script>
+    <script src="~/assets/authkit/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="~/assets/authkit/datatables/jquery.dataTables.min.js"></script>
+    <script src="~/assets/authkit/bootstrap/dataTables.bootstrap5.min.js"></script>
+    <script src="~/assets/authkit/datatables/dataTables.buttons.min.js"></script>
+    <script src="~/assets/authkit/datatables/buttons.bootstrap5.min.js"></script>
+    <script src="~/assets/authkit/datatables/dataTables.select.min.js"></script>
+    <script src="~/assets/authkit/datatables/altEditor/dataTables.altEditor.free.js"></script>
+    <script src="~/assets/authkit/sweetalert2/sweetalert2.all.min.js"></script>
+
     <style>
-            body {
-                background-color: #f4f6f9;
-                font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-            }
+        /* Modal kapanınca geride kalan backdrop temizliği */
+        body.modal-open {
+        overflow: hidden;
+        }
+    </style>
 
-            .authkit-navbar {
-                background-color: #1f2937;
-                color: #fff;
-            }
+    <style>
+        body {
+        background-color: #f4f6f9;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        }
 
-            .authkit-navbar .navbar-brand {
-                color: #fff;
-                font-weight: 600;
-            }
+        .authkit-navbar {
+        background-color: #1f2937;
+        color: #fff;
+        }
 
-            .authkit-navbar .nav-link {
-                color: #cbd5e1;
-            }
+        .authkit-navbar .navbar-brand {
+        color: #fff;
+        font-weight: 600;
+        }
 
-            .authkit-navbar .nav-link:hover,
-            .authkit-navbar .nav-link.active {
-                color: #fff;
-            }
+        .authkit-navbar .nav-link {
+        color: #cbd5e1;
+        }
 
-            .authkit-content {
-                padding: 1.5rem;
-            }
+        .authkit-navbar .nav-link:hover,
+        .authkit-navbar .nav-link.active {
+        color: #fff;
+        }
 
-            .authkit-card {
-                background-color: #fff;
-                border: 1px solid #e5e7eb;
-                border-radius: .5rem;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
-            }
+        .authkit-content {
+        padding: 1.5rem;
+        }
+
+        .authkit-card {
+        background-color: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: .5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+        }
     </style>
 </head>
 
@@ -150,27 +169,6 @@
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/select/2.0.3/js/dataTables.select.min.js"></script>
-    <script src="https://cdn.datatables.net/editor/2.3.6/js/dataTables.editor.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
-
-    <script>
-        //<![CDATA[
-        // Modal kapanınca geride kalan backdrop temizliği
-        document.addEventListener('hidden.bs.modal', function () {
-        document.querySelectorAll('.modal-backdrop').forEach(function (b) { b.remove(); });
-        document.body.classList.remove('modal-open');
-        document.body.style.removeProperty('padding-right');
-        document.body.style.removeProperty('overflow');
-        });
-        //]]>
-    </script>
 </body>
 
 </html>

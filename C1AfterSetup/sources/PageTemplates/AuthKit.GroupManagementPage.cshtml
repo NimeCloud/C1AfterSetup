@@ -53,77 +53,74 @@
 
 <script>
     //<![CDATA[
+    // AuthKit Group Management — uses free altEditor (DataTables altEditor plugin), NOT commercial
+    // DataTables Editor. jQuery/DataTables/altEditor/SweetAlert2 are loaded in AuthKit.PanelLayout <head>.
+
     $(function () {
-        var editor = new $.fn.dataTable.Editor({
-            ajax: {
-                create: {
-                    url: '/Api/AddGroup', type: 'POST', contentType: 'text/plain; charset=utf-8',
-                    data: function (d) {
-                        var row = d.data[0];
-                        row.SourceGroupId = $('#alteditor-clone-group-select').val() || null;
-                        return JSON.stringify(row);
-                    }
-                },
-                edit: {
-                    url: '/Api/UpdateGroup', type: 'POST', contentType: 'text/plain; charset=utf-8',
-                    data: function (d) { return JSON.stringify(d.data[0]); }
-                },
-                remove: {
-                    url: '/Api/DeleteGroup', type: 'POST', contentType: 'text/plain; charset=utf-8',
-                    data: function (d) { return JSON.stringify(d.data[0]); }
+        var buttons = [
+            { text: 'Ekle', name: 'add' },
+            { extend: 'selected', text: 'Düzenle', name: 'edit' },
+            { extend: 'selected', text: 'Sil', name: 'delete' },
+            { className: 'dt-button-divider', text: '', action: function (e) { e.preventDefault(); } },
+            {
+                extend: 'selected', text: 'Üyeleri Yönet',
+                action: function (e, dt, node, config) {
+                    var selectedData = dt.rows({ selected: true }).data()[0];
+                    if (selectedData) openGroupUserManagementModal(selectedData.Id, selectedData.GroupName);
                 }
-            },
-            table: '#groups-table', idSrc: 'Id',
-            fields: [
-                { name: 'Id', type: 'hidden' },
-                { name: 'GroupName', label: 'Grup Adı', type: 'text' },
-                { name: 'Description', label: 'Açıklama', type: 'text' }
-            ],
-            i18n: {
-                create: { title: 'Yeni Grup', button: 'Ekle', submit: 'Kaydet' },
-                edit: { title: 'Grubu Düzenle', button: 'Düzenle', submit: 'Güncelle' },
-                remove: { title: 'Grubu Sil', button: 'Sil', submit: 'Sil', confirm: { _: 'Bu grup ve ilişkili yetkiler silinecek. Emin misiniz?', 1: '%d grup silinecek. Emin misiniz?' } }
             }
-        });
-
-        // Uye yonetimi butonu
-        editor.on('open', function (e, mode) {
-            if (mode === 'edit') {
-                setTimeout(function () {
-                    if ($('.DTE_Action_ManageMembers').length === 0) {
-                        $('.DTE_Form_Buttons').prepend('<button class="btn DTE_Action_ManageMembers" type="button">Üyeleri Yönet</button>');
-                        $('.DTE_Action_ManageMembers').on('click', function () {
-                            var data = editor.get();
-                            openGroupUserManagementModal(data.Id, data.GroupName);
-                        });
-                    }
-                }, 100);
-            }
-        });
-
-        // Klonlama dropdown'i
-        editor.on('open', function (e, mode) {
-            if (mode === 'create') {
-                setTimeout(function () {
-                    if ($('#alteditor-clone-group-row').length === 0) {
-                        var cloneRow = $('<div class="mb-3 row" id="alteditor-clone-group-row"><label class="col-md-4">Yetkileri Kopyala</label><div class="col-md-8"><select id="alteditor-clone-group-select" class="form-select"><option value="">Kopyalama...</option></select></div></div>');
-                        $('.DTE_Field_Name_description').before(cloneRow);
-                        $.ajax({
-                            url: '/Api/GetAllGroupsForDropdown', type: 'POST',
-                            success: function (r) {
-                                if (r.data) r.data.forEach(function (g) { $('#alteditor-clone-group-select').append(new Option(g.GroupName, g.Id)); });
-                            }
-                        });
-                    }
-                }, 50);
-            }
-        });
+        ];
 
         $('#groups-table').DataTable({
-            dom: 'Bfrtip', select: true,
-            ajax: { url: '/Api/GetGroups', type: 'POST', contentType: 'text/plain; charset=utf-8', data: function (d) { return JSON.stringify(d); } },
-            columns: [{ data: 'Id', visible: false }, { data: 'GroupName', title: 'Grup Adı' }, { data: 'Description', title: 'Açıklama' }],
-            buttons: [{ extend: 'create', editor: editor }, { extend: 'edit', editor: editor }, { extend: 'remove', editor: editor }]
+            dom: 'Bfrtip',
+            select: 'single',
+            altEditor: true,
+            ajax: { url: '/Api/GetGroups', type: 'POST', contentType: 'text/plain; charset=utf-8', data: function (d) { return JSON.stringify({}); }, dataSrc: 'data' },
+            columns: [
+                { data: 'Id', visible: false },
+                { data: 'GroupName', title: 'Grup Adı' },
+                { data: 'Description', title: 'Açıklama' }
+            ],
+            buttons: buttons,
+            "onAddRow": function (datatable, rowdata, success, error) {
+                var sourceGroupId = $('#alteditor-clone-group-select').val();
+                if (sourceGroupId) { rowdata.SourceGroupId = sourceGroupId; }
+                $.ajax({
+                    url: '/Api/AddGroup', type: 'POST', contentType: 'text/plain; charset=utf-8', data: JSON.stringify(rowdata),
+                    success: function (data) { success(data); Swal.fire('Başarılı!', 'Grup eklendi.', 'success'); },
+                    error: function (res) { var err = res.responseJSON || { error: 'İstek işlenirken bir sorun oluştu.' }; Swal.fire('Hata!', err.error, 'error'); }
+                });
+            },
+            "onEditRow": function (datatable, rowdata, success, error) {
+                $.ajax({
+                    url: '/Api/UpdateGroup', type: 'POST', contentType: 'text/plain; charset=utf-8', data: JSON.stringify(rowdata),
+                    success: function (data) { success(data); Swal.fire('Başarılı!', 'Grup güncellendi.', 'success'); },
+                    error: function (res) { var err = res.responseJSON || { error: 'İstek işlenirken bir sorun oluştu.' }; Swal.fire('Hata!', err.error, 'error'); }
+                });
+            },
+            "onDeleteRow": function (datatable, rowdata, success, error) {
+                $.ajax({
+                    url: '/Api/DeleteGroup', type: 'POST', contentType: 'text/plain; charset=utf-8', data: JSON.stringify(rowdata[0]),
+                    success: function (data) { success(data); Swal.fire('Başarılı!', 'Grup silindi.', 'success'); },
+                    error: function (res) { var err = res.responseJSON || { error: 'İstek işlenirken bir sorun oluştu.' }; Swal.fire('Hata!', err.error, 'error'); }
+                });
+            }
+        });
+
+        // AltEditor modal düzenlemeleri: klonlama dropdown'i
+        $(document).on('alteditor:add_dialog_opened', '.altEditor-modal', function () {
+            var modalBody = $(this).find('.modal-body');
+            $(this).find('#alteditor-row-Id').hide();
+            if ($('#alteditor-clone-group-row').length === 0) {
+                var cloneRow = $('<div class="mb-3 row" id="alteditor-clone-group-row"><label class="col-md-4">Yetkileri Kopyala</label><div class="col-md-8"><select id="alteditor-clone-group-select" class="form-select"><option value="">Kopyalama...</option></select></div></div>');
+                modalBody.append(cloneRow);
+                $.ajax({
+                    url: '/Api/GetAllGroupsForDropdown', type: 'POST',
+                    success: function (r) {
+                        if (r.data) r.data.forEach(function (g) { $('#alteditor-clone-group-select').append(new Option(g.GroupName, g.Id)); });
+                    }
+                });
+            }
         });
 
         // Uye yonetim modal'i

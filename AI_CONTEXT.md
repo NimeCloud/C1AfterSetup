@@ -490,3 +490,32 @@ deliberately does NOT deploy — they are C1 CMS packages installable/upgradeabl
 - Version pinning source of truth: `E:\_CODE_\WebDev\SystemC1\Website\packages.config`.
 - To make one mandatory later: copy its DLL(s) to `sources/bin` + add to `binDependencies` +
   add any binding redirect (see §17) + verify (`aspnet_compiler` + C1 log).
+
+---
+
+## 19. AuthKit Admin Page Assets (self-contained, no CDN / no commercial Editor)
+
+The AuthKit management pages must be **independent** of the Mdrnz/reference template. They load all
+CSS/JS from a local `~/assets/authkit/` folder (deployed via manifest `assets` → `DeployPageTemplatesStep`).
+
+**Local assets (`sources/assets/authkit/`):**
+- `jquery-3.7.1.min.js`
+- `bootstrap/bootstrap.min.css` + `bootstrap.bundle.min.js`
+- `datatables/jquery.dataTables.min.js` (1.13.5) + `dataTables.buttons.min.js` + `buttons.bootstrap5.*` + `dataTables.select.min.js` + `select.bootstrap5.min.css`
+- `datatables/altEditor/dataTables.altEditor.free.js` + `tr.json` — **free altEditor**, replaces commercial DataTables Editor
+- `sweetalert2/sweetalert2.all.min.js` + `sweetalert2.min.css`
+
+**Key fixes (2026-08-07):**
+- **`$ is not defined`:** PanelLayout loaded jQuery at the END of `<body>`, so child-page scripts
+  (inside `@RenderBody`) ran BEFORE jQuery. **Fix:** load jQuery + DataTables + altEditor + SweetAlert2
+  in `<head>` (same as Mdrnz.PanelLayout) — child scripts always see `$`.
+- **`dataTables.editor.min.js` CDN 404:** DataTables Editor is commercial and not on the CDN.
+  **Fix:** replaced with free **altEditor** (`altEditor: true` + `onAddRow`/`onEditRow`/`onDeleteRow`
+  callbacks) in `UserManagementPage` and `GroupManagementPage`.
+- All CSS/JS now points to `~/assets/authkit/...` (only Tabler Icons remains a CDN `<link>`, which works).
+
+**Manifest:** `"assets": [{ "source": "assets/authkit", "target": "~/assets/authkit" }]` — handled by
+`DeployPageTemplatesStep` (Verify checks content equality; Execute uses `FileSyncUtil.SyncDirectory`).
+
+**Test (localhost:2681 = `R:\deploy_pkg_v6`):** `/AuthKit/Users` redirects to login when unauthenticated
+(auth-only ✓); all `~/assets/authkit/*` return HTTP 200; login page loads local bootstrap/jquery/sweetalert2.
