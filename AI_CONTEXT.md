@@ -1,9 +1,10 @@
-# C1AfterSetup — Debugging Experience Log
+# C1AfterSetup — AI Context Memory
 
-> **Purpose:** Accumulated debugging knowledge, gotchas, and fix recipes from real sessions.
-> New AI agents / fresh contexts should read this file FIRST when starting a C1AfterSetup task.
+> **Purpose:** `new task` ile yeni bir AI agent / fresh context başlatıldığında kaybolan bilgi birikimini
+> yeniden sağlamak. Debugging gotcha'ları, komut kalıpları, sabit değerler ve yöntemler burada toplanır.
+> Yeni agent bu dosyayı **İLK OKUMASI GEREKEN** dosya olarak görmeli.
 >
-> **Last updated:** 2026-08-05 (deploy5: AuthKit pages fix + pipeline registration)
+> **Last updated:** 2026-08-07 (deploy19: KeyTreeItem FK fix + git commit yöntemi)
 
 ---
 
@@ -249,7 +250,26 @@ Management pages (Users, Groups, Permissions) and AuthKit Home have **empty** pl
 
 When starting fresh, check these files FIRST:
 - [`PROJECT.md`](PROJECT.md) — architecture, pipeline, data types
-- [`DEBUG-XP.md`](DEBUG-XP.md) — this file, debugging gotchas
+- [`AI_CONTEXT.md`](AI_CONTEXT.md) — this file, debugging gotchas, context memory
 - [`C1AfterSetup/C1AfterSetup.csproj`](C1AfterSetup/C1AfterSetup.csproj) — explicit file listing
 - [`C1AfterSetup/Program.cs`](C1AfterSetup/Program.cs) — step pipeline registration
 - [`C1AfterSetup/Config/setup.manifest.json`](C1AfterSetup/Config/setup.manifest.json) — what gets deployed
+
+---
+
+## 13. Git Commit Yöntemi
+
+Commit mesajında `<`, `"`, `>` gibi karakterler veya Türkçe karakterler shell tarafından
+yanlış yorumlanabilir. **Her zaman `-F` (file) yöntemi kullan:**
+
+```cmd
+# 1) Mesajı geçici bir dosyaya yaz (write_to_file ile)
+# 2) Commit et:
+git add <dosyalar>
+git commit -F "path/to/commit-message.txt"
+
+# 3) Geçici dosyayı sil:
+del "path/to/commit-message.txt"
+```
+
+**Kesinlikle `-m "..."` kullanma** — `&`, `<`, `>` karakterleri cmd.exe'de kırılır.
