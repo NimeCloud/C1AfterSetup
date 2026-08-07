@@ -49,6 +49,9 @@ namespace AuthKit.Startup
                     var syncService = new Authorization.PermissionSyncService();
                     syncService.SynchronizePermissions();
 
+                    // 2b. Gruplari senkronize et (System.Administrators vs.)
+                    syncService.SynchronizeGroups();
+
                     _initialized = true;
                 }
                 catch (Exception ex)

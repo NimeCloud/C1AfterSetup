@@ -17,6 +17,8 @@
 }
 
 @{
+    // Seed groups/permissions on first admin page visit (idempotent)
+    try { AuthKit.Startup.AuthStartupHandler.Initialize(); } catch { }
     var tablerIconsUrl = "https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css";
     // Oturum kontrolü - giriş yapılmamışsa login sayfasına yönlendir
     var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();

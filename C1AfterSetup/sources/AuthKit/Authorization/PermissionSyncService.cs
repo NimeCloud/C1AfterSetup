@@ -70,6 +70,29 @@ namespace AuthKit.Authorization
             }
         }
 
+        /// <summary>
+        /// Seeds the default groups defined in GroupKeys into the database (idempotent).
+        /// </summary>
+        public void SynchronizeGroups()
+        {
+            var groupNames = GetAllGroupNamesFromClass(typeof(GroupKeys));
+
+            var dbGroups = new HashSet<string>(
+                DataFacade.GetData<AuthKit.Data.Authorization.Group>().Select(g => g.GroupName),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var groupName in groupNames)
+            {
+                if (string.IsNullOrWhiteSpace(groupName) || dbGroups.Contains(groupName)) continue;
+
+                var newGroup = DataFacade.BuildNew<AuthKit.Data.Authorization.Group>();
+                newGroup.GroupName = groupName;
+                newGroup.Description = "System group (auto-seeded).";
+                DataFacade.AddNew(newGroup);
+                dbGroups.Add(groupName);
+            }
+        }
+
         #region Internal helpers
 
         private class CodePermission
@@ -112,6 +135,35 @@ namespace AuthKit.Authorization
             {
                 string newPrefix = string.IsNullOrEmpty(prefix) ? nestedType.Name : $"{prefix}.{nestedType.Name}";
                 TraversePermissions(nestedType, newPrefix, result);
+            }
+        }
+
+        private static List<string> GetAllGroupNamesFromClass(Type rootType)
+        {
+            var result = new List<string>();
+            TraverseGroupNames(rootType, null, result);
+            return result;
+        }
+
+        private static void TraverseGroupNames(Type type, string prefix, List<string> result)
+        {
+            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static)
+                             .Where(f => f.FieldType == typeof(string));
+
+            foreach (var field in fields)
+            {
+                string name = null;
+                try { name = field.GetValue(null) as string; } catch { }
+                if (string.IsNullOrWhiteSpace(name))
+                    name = string.IsNullOrEmpty(prefix) ? field.Name : $"{prefix}.{field.Name}";
+                result.Add(name);
+            }
+
+            var nestedTypes = type.GetNestedTypes(BindingFlags.Public);
+            foreach (var nestedType in nestedTypes)
+            {
+                string newPrefix = string.IsNullOrEmpty(prefix) ? nestedType.Name : $"{prefix}.{nestedType.Name}";
+                TraverseGroupNames(nestedType, newPrefix, result);
             }
         }
 

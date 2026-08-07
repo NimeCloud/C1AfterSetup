@@ -272,6 +272,80 @@ namespace AuthKit.Authorization
                              .Any(u => u.RefUserId == userId && u.RefGroupId == group.Id);
         }
 
+        /// <summary>
+        /// Ensures the "System.Administrators" group exists in the database (idempotent).
+        /// </summary>
+        public static void EnsureAdministratorsGroup()
+        {
+            string name = GroupKeyName(GroupKeys.System.Administrators, "System.Administrators");
+            using (var connection = new DataConnection())
+            {
+                bool exists = connection.Get<AuthKit.Data.Authorization.Group>()
+                    .Any(g => g.GroupName.Equals(name, StringComparison.OrdinalIgnoreCase));
+                if (exists) return;
+
+                var group = connection.CreateNew<AuthKit.Data.Authorization.Group>();
+                group.GroupName = name;
+                group.Description = "System administrators - full access.";
+                connection.Add(group);
+            }
+        }
+
+        /// <summary>
+        /// Ensures a user is a member of "System.Administrators" when they should be, so the
+        /// system is never left without an administrator. A user is granted the membership if
+        /// the current C1 user is a C1 Administrator, OR if the administrators group currently
+        /// has no members yet (first-user bootstrap). Idempotent.
+        /// </summary>
+        public static void EnsureAdministratorMembership(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId)) return;
+
+            string name = GroupKeyName(GroupKeys.System.Administrators, "System.Administrators");
+            string adminGroupId;
+            using (var connection = new DataConnection())
+            {
+                var adminGroup = connection.Get<AuthKit.Data.Authorization.Group>()
+                    .FirstOrDefault(g => g.GroupName.Equals(name, StringComparison.OrdinalIgnoreCase));
+                if (adminGroup == null)
+                {
+                    var group = connection.CreateNew<AuthKit.Data.Authorization.Group>();
+                    group.GroupName = name;
+                    group.Description = "System administrators - full access.";
+                    adminGroup = connection.Add(group);
+                }
+                adminGroupId = adminGroup.Id;
+            }
+
+            using (var connection = new DataConnection())
+            {
+                bool isMember = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
+                    .Any(u => u.RefUserId == userId && u.RefGroupId == adminGroupId);
+                if (isMember) return;
+
+                bool groupHasMembers = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
+                    .Any(u => u.RefGroupId == adminGroupId);
+
+                bool isC1Admin = false;
+                try { isC1Admin = AuthKit.C1.C1Security.IsCurrentUserInAdministratorsGroup(); } catch { }
+
+                // Grant only when the current C1 user is a C1 administrator, or when the admin
+                // group is still empty (first shadow user -> becomes the administrator).
+                if (!isC1Admin && groupHasMembers) return;
+
+                var relation = connection.CreateNew<AuthKit.Data.Authorization.UserInGroup>();
+                relation.RefUserId = userId;
+                relation.RefGroupId = adminGroupId;
+                relation.IsAllowed = true;
+                connection.Add(relation);
+            }
+        }
+
+        private static string GroupKeyName(string keyValue, string fallback)
+        {
+            return string.IsNullOrWhiteSpace(keyValue) ? fallback : keyValue;
+        }
+
         public static IEnumerable<AuthKit.Data.Authorization.Module> GetUserVisibleModules(AuthKit.Data.Authentication.User user)
         {
             if (user == null) return Enumerable.Empty<AuthKit.Data.Authorization.Module>();
