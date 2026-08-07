@@ -142,6 +142,7 @@ namespace C1AfterSetup
                 new PrepareFreshStep(),
                 new DeployDependenciesStep(),
                 new DeployDataTypesStep(),
+                new ConfigureSqlDataProviderStep(),
                 new DeployPackageStep(),
                 new CompileGeneratedTypesStep(),
                 new DeployAppCodeStep(),

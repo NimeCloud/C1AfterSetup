@@ -54,6 +54,24 @@ namespace C1AfterSetup
         public string Type { get; set; }
     }
 
+    public class SqlTypeEntry
+    {
+        public string File { get; set; }
+        public string TableName { get; set; }
+    }
+
+    public class SqlDataProviderSettings
+    {
+        public bool Enabled { get; set; }
+        public string ConnectionString { get; set; }
+        public List<SqlTypeEntry> SqlTypes { get; set; }
+
+        public SqlDataProviderSettings()
+        {
+            SqlTypes = new List<SqlTypeEntry>();
+        }
+    }
+
     public class WebConfigSettings
     {
         public bool RemoveServerHeader { get; set; }
@@ -85,6 +103,7 @@ namespace C1AfterSetup
         public AppCodeSettings AppCode { get; set; }
         public List<TemplateEntry> Templates { get; set; }
         public List<FileMapping> Razor { get; set; }
+        public SqlDataProviderSettings SqlDataProvider { get; set; }
         public List<string> BinDependencies { get; set; }
         public bool RoslynEnabled { get; set; }
         public WebConfigSettings WebConfig { get; set; }
@@ -98,6 +117,7 @@ namespace C1AfterSetup
 
         public SetupManifest()
         {
+            SqlDataProvider = new SqlDataProviderSettings();
             DataTypes = new List<DataTypeEntry>();
             AppCode = new AppCodeSettings();
             Templates = new List<TemplateEntry>();
