@@ -7,173 +7,116 @@
 }
 
 @{
-    var error = "";
-    var result = "";
-    if (IsPost)
+    var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
+    var redirectUrl = Request.QueryString["redirect"];
+    if (string.IsNullOrEmpty(redirectUrl))
     {
-        var provider = Request.Form["provider"];
-        var rememberMe = Request.Form["rememberMe"] == "on";
-        if (provider == "google")
-        {
-            result = AuthKit.Authentication.AuthenticationManager.LoginWithGoogle(Request.Form["credential"], rememberMe);
-        }
-        else if (provider == "facebook")
-        {
-            result = AuthKit.Authentication.AuthenticationManager.LoginWithFacebook(Request.Form["credential"], rememberMe);
-        }
-        else
-        {
-            var username = Request.Form["username"];
-            var password = Request.Form["password"];
-
-            // Provider Chain + Shadow User pattern:
-            // 1. Hangi provider'in kullaniciyi tanidigini bul (AuthKit → C1 CMS)
-            var userProvider = UserProviderRegistry.FindProvider(username, password);
-
-            if (userProvider != null)
-            {
-                // 2. Kullanici bilgisini al
-                var info = userProvider.GetUser(username);
-                if (info != null)
-                {
-                    // 3. C1 CMS kullanicisiysa AuthKit'te shadow hesap olustur
-                    LinkedUserManager.EnsureShadowUser(
-                        info.Username, info.Email, password, userProvider.Name);
-
-                    // 4. AuthKit ile giris yap (shadow user artik mevcut)
-                    result = AuthKit.Authentication.AuthenticationManager.Login(username, password, rememberMe);
-                }
-            }
-            else
-            {
-                // Provider bulunamadi – dogrudan AuthKit Login'i dene (fallback)
-                result = AuthKit.Authentication.AuthenticationManager.Login(username, password, rememberMe);
-            }
-        }
+        redirectUrl = AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/");
     }
-
-    if (!string.IsNullOrEmpty(result))
-    {
-        var dict = new System.Web.Script.Serialization.JavaScriptSerializer().DeserializeObject(result) as
-System.Collections.Generic.Dictionary<string, object>;
-        var ok = dict != null && dict.ContainsKey("ok") && Convert.ToBoolean(dict["ok"]);
-        if (ok)
-        {
-            var redirect = Request.QueryString["redirect"];
-            if (!string.IsNullOrEmpty(redirect))
-            {
-                Response.Redirect(redirect);
-            }
-            else
-            {
-                Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/"));
-            }
-        }
-        else
-        {
-            error = (dict != null && dict.ContainsKey("error")) ? Convert.ToString(dict["error"]) : "Login failed.";
-        }
-    }
-
-    var googleClientId = AuthKit.Authentication.AuthenticationManager.GoogleClientId;
-    var facebookAppId = AuthKit.Authentication.AuthenticationManager.FacebookAppId;
+    var redirectUrlJs = HttpUtility.JavaScriptStringEncode(redirectUrl);
 }
 
-<h4 class="mb-1 fw-semibold">Log In</h4>
-<p class="mb-3 text-muted">Sign in to your account</p>
-
-@if (!string.IsNullOrEmpty(error))
+@if (currentUser != null)
 {
-    <div class="alert alert-danger py-2">@error</div>
-}
-
-<form method="post" id="loginForm">
-    <input type="hidden" name="provider" id="oauthProvider" value="" />
-    <input type="hidden" name="credential" id="oauthCredential" value="" />
-    <div class="mb-3">
-        <label class="form-label">Username / Email</label>
-        <input type="text" class="form-control" name="username" required="required" />
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Password</label>
-        <input type="password" class="form-control" name="password" required="required" />
-    </div>
-    <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" name="rememberMe" id="rememberMe" />
-        <label class="form-check-label" for="rememberMe">Remember me</label>
-    </div>
-    <button type="submit" class="btn btn-primary w-100">Log In</button>
-    <div class="d-flex justify-content-between mt-3 small">
-        <a
-            href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")">Sign
-            Up</a>
-            <a
-                href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")">Forgot
-                Password</a>
-            </div>
-        </form>
-
-        @if (!string.IsNullOrEmpty(googleClientId) || !string.IsNullOrEmpty(facebookAppId))
-        {
-            <div class="d-flex align-items-center my-3">
-                <hr class="flex-grow-1" />
-                <span class="px-2 text-muted small">or</span>
-                <hr class="flex-grow-1" />
-            </div>
-            <div class="d-grid gap-2">
-                @if (!string.IsNullOrEmpty(googleClientId))
-                {
-                    <div id="googleBtn" class="text-center"></div>
-                }
-                @if (!string.IsNullOrEmpty(facebookAppId))
-                {
-                    <button type="button" class="btn btn-outline-primary w-100" onclick="authkitFacebookLogin();">
-                        Log in with Facebook
-                    </button>
-                }
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(googleClientId))
-        {
-            <script src="https://accounts.google.com/gsi/client" async="async" defer="defer"></script>
-        }
-        @if (!string.IsNullOrEmpty(facebookAppId))
-        {
-            var fbSdkUrl = "https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v18.0&appId=" + facebookAppId;
-            <script async="async" defer="defer" crossorigin="anonymous" src="@fbSdkUrl"></script>
-        }
-
+    <div class="text-center">
+        <h5 class="mb-1 fs-5">Welcome back, @currentUser.UserName!</h5>
+        <p class="text-muted mb-4">You are already logged in.</p>
+        <a href="@redirectUrl" class="btn btn-primary w-100 py-2 mb-2">Continue to Panel</a>
+        <button type="button" id="logout-then-login" class="btn btn-outline-secondary w-100 py-2">Sign in with a different
+            account</button>
+        </div>
         <script>
             //<![CDATA[
-            var authkitGoogleClientId = '@googleClientId';
-            var authkitFacebookAppId = '@facebookAppId';
-
-            function authkitSubmitOAuth(provider, credential) {
-            document.getElementById('oauthProvider').value = provider;
-            document.getElementById('oauthCredential').value = credential;
-            document.getElementById('loginForm').submit();
-            }
-
-            function authkitGoogleCallback(response) {
-            if (response && response.credential) {
-            authkitSubmitOAuth('google', response.credential);
-            }
-            }
-
-            function authkitFacebookLogin() {
-            FB.login(function (response) {
-            if (response.authResponse) {
-            authkitSubmitOAuth('facebook', response.authResponse.accessToken);
-            }
-            }, { scope: 'email' });
-            }
-
-            window.addEventListener('load', function () {
-            if (authkitGoogleClientId && window.google && google.accounts && google.accounts.id) {
-            google.accounts.id.initialize({ client_id: authkitGoogleClientId, callback: authkitGoogleCallback });
-            google.accounts.id.renderButton(document.getElementById('googleBtn'), { theme: 'outline', size: 'large', width: 300 });
-            }
+            $('#logout-then-login').on('click', function (e) {
+                e.preventDefault();
+                Swal.fire({ title: 'Signing out...', text: 'Please wait.', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+                $.ajax({ type: 'POST', url: '/Api/Logout', contentType: 'text/plain; charset=utf-8', data: '{}' }).always(function () { window.location.reload(); });
             });
             //]]>
         </script>
+    }
+else
+    {
+        <h4 class="mb-1 fw-semibold">Log In</h4>
+        <p class="mb-3 text-muted">Sign in to your account</p>
+
+        <form id="login-form" autocomplete="off">
+            <div class="mb-3">
+                <label for="username" class="form-label">Username / Email</label>
+                <input type="text" class="form-control" id="username" required="required" />
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" required="required" />
+            </div>
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="rememberMe" checked="checked" />
+                    <label class="form-check-label" for="rememberMe">Remember me</label>
+                </div>
+                <a class="text-primary small"
+                   href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")">Forgot
+                    Password</a>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-2">Log In</button>
+                <div class="d-flex align-items-center justify-content-center mt-3 small">
+                    <span>Don't have an account?</span>
+                    <a class="text-primary fw-medium ms-2"
+                       href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")">Sign
+                        Up</a>
+                    </div>
+                </form>
+
+                <script>
+                    //<![CDATA[
+                    $(function () {
+                        $('#login-form').on('submit', function (e) {
+                            e.preventDefault();
+                            var username = $('#username').val();
+                            var password = $('#password').val();
+                            var rememberMe = $('#rememberMe').is(':checked');
+
+                            Swal.fire({
+                                title: 'Signing in...',
+                                text: 'Please wait.',
+                                allowOutsideClick: false,
+                                didOpen: function () { Swal.showLoading(); }
+                            });
+
+                            $.ajax({
+                                type: 'POST',
+                                url: '/Api/Login',
+                                contentType: 'text/plain; charset=utf-8',
+                                data: JSON.stringify({ username: username, password: password, rememberMe: rememberMe }),
+                                dataType: 'json',
+                                success: function (response) {
+                                    if (response.ok) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Success!',
+                                            text: 'Logged in. Redirecting...',
+                                            timer: 1500,
+                                            showConfirmButton: false
+                                        });
+                                        setTimeout(function () { window.location.href = '@redirectUrlJs'; }, 1500);
+                                    } else {
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Login Failed!',
+                                            text: response.error || 'Invalid username or password.'
+                                        });
+                                    }
+                                },
+                                error: function () {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Server Error!',
+                                        text: 'Could not connect to the server.'
+                                    });
+                                }
+                            });
+                        });
+                    });
+                    //]]>
+                </script>
+            }

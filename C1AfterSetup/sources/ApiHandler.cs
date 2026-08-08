@@ -124,6 +124,10 @@ public class ApiHandler : IHttpHandler
         {
             switch (action)
             {
+                // --- Auth işlemleri ---
+                case "Login": Write(context, ApiLogin(context)); break;
+                case "Logout": Write(context, ApiLogout(context)); break;
+
                 // --- Temel yardımcı uçlar ---
                 case "time": Write(context, TimeResponse()); break;
                 case "hello": Write(context, HelloResponse(context)); break;
@@ -241,6 +245,54 @@ public class ApiHandler : IHttpHandler
             username = c1LoggedIn ? c1Username : null,
             c1LoggedIn = c1LoggedIn
         };
+    }
+
+    // ============ Auth (Login/Logout) ============
+    private static object ApiLogin(HttpContext context)
+    {
+        JObject data = JObject.Parse(ReadBody(context));
+        string username = data.GetValue("username", StringComparison.OrdinalIgnoreCase)?.ToString();
+        string password = data.GetValue("password", StringComparison.OrdinalIgnoreCase)?.ToString();
+        bool rememberMe = data.GetValue("rememberMe", StringComparison.OrdinalIgnoreCase)?.Value<bool>() ?? false;
+
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+        {
+            return new { ok = false, error = "Username and password are required." };
+        }
+
+        // 1. Provider chain verification
+        var provider = UserProviderRegistry.FindProvider(username, password);
+        if (provider == null)
+        {
+            return new { ok = false, error = "Invalid username or password." };
+        }
+
+        // 2. Get user info
+        var info = provider.GetUser(username);
+        if (info == null)
+        {
+            return new { ok = false, error = "Invalid username or password." };
+        }
+
+        // 3. Ensure shadow user exists in AuthKit
+        LinkedUserManager.EnsureShadowUser(info.Username, info.Email, password, provider.Name);
+
+        // 4. AuthKit login (sets cookie)
+        var lr = AuthKit.Authentication.AuthenticationManager.Login(username, password, rememberMe);
+        bool ok = string.IsNullOrEmpty(lr) || lr.Contains("\"ok\":true");
+        if (ok)
+        {
+            return new { ok = true, username = username, provider = provider.Name };
+        }
+
+        return new { ok = false, error = "Invalid username or password." };
+    }
+
+    private static object ApiLogout(HttpContext context)
+    {
+        AuthKit.Authentication.AuthenticationManager.Logout();
+        System.Web.Security.FormsAuthentication.SignOut();
+        return new { ok = true };
     }
 
     // ============ Kullanıcı Yönetimi ============

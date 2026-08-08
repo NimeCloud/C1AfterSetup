@@ -35,31 +35,35 @@
     <link rel="stylesheet" href="~/assets/authkit/sweetalert2/sweetalert2.min.css" />
     <link rel="stylesheet" href="@tablerIconsUrl" />
 
+    <!-- Load jQuery and SweetAlert2 in head so inline scripts in content see them -->
+    <script src="~/assets/authkit/jquery-3.7.1.min.js"></script>
+    <script src="~/assets/authkit/sweetalert2/sweetalert2.all.min.js"></script>
+
     <style>
-            body {
-                background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-                min-height: 100vh;
-                font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-            }
+        body {
+        background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+        min-height: 100vh;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        }
 
-            .authkit-auth-card {
-                background-color: #fff;
-                border-radius: .75rem;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
-                padding: 2.5rem;
-                max-width: 440px;
-                width: 100%;
-            }
+        .authkit-auth-card {
+        background-color: #fff;
+        border-radius: .75rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+        padding: 2.5rem;
+        max-width: 440px;
+        width: 100%;
+        }
 
-            .authkit-auth-card .brand {
-                font-size: 1.5rem;
-                font-weight: 700;
-                color: #1f2937;
-            }
+        .authkit-auth-card .brand {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+        }
 
-            .authkit-auth-card .brand i {
-                color: #3b82f6;
-            }
+        .authkit-auth-card .brand i {
+        color: #3b82f6;
+        }
     </style>
 </head>
 
@@ -74,9 +78,7 @@
         }
     </div>
 
-    <script src="~/assets/authkit/jquery-3.7.1.min.js"></script>
     <script src="~/assets/authkit/bootstrap/bootstrap.bundle.min.js"></script>
-    <script src="~/assets/authkit/sweetalert2/sweetalert2.all.min.js"></script>
 </body>
 
 </html>

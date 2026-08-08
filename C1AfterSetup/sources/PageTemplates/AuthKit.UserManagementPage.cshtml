@@ -31,23 +31,23 @@
 
 <div>
     <div class="card">
-        <ul class="nav nav-pills user-profile-tab" id="pills-tab" role="tablist">
+        <ul class="nav nav-tabs user-profile-tab" id="pills-tab" role="tablist">
             <li class="nav-item" role="presentation">
                 <button
-                    class="nav-link position-relative rounded-0 d-flex align-items-center justify-content-center py-3 active"
-                    id="pills-real-users-tab" data-bs-toggle="pill" data-bs-target="#pills-real-users" type="button"
+                    class="nav-link active"
+                    id="pills-real-users-tab" data-bs-toggle="tab" data-bs-target="#pills-real-users" type="button"
                     role="tab">
-                    <i class="ti ti-user-circle me-2 fs-6"></i>
-                    <span class="d-none d-md-block">Users</span>
+                    <i class="ti ti-user-circle me-2"></i>
+                    <span>Users</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button
-                    class="nav-link position-relative rounded-0 d-flex align-items-center justify-content-center py-3"
-                    id="pills-template-users-tab" data-bs-toggle="pill" data-bs-target="#pills-template-users"
+                    class="nav-link"
+                    id="pills-template-users-tab" data-bs-toggle="tab" data-bs-target="#pills-template-users"
                     type="button" role="tab">
-                    <i class="ti ti-file-text me-2 fs-6"></i>
-                    <span class="d-none d-md-block">Template Users</span>
+                    <i class="ti ti-file-text me-2"></i>
+                    <span>Template Users</span>
                 </button>
             </li>
         </ul>
@@ -92,33 +92,31 @@
 </div>
 
 <style>
-    /* Tab styling: inactive tabs get a visible background + border so they don't blend into
-       the white card; the active tab stands out in blue. */
+    /* Tab styling: clean underline tabs matching reference site appearance */
+    .user-profile-tab {
+        border-bottom: 2px solid #dee2e6;
+        margin-bottom: 0;
+    }
     .user-profile-tab .nav-link {
-        background-color: #f1f3f5;
-        color: #495057;
-        border: 1px solid #dee2e6;
-        font-size: 1.05rem;
-    }
-
-    .user-profile-tab .nav-link i {
+        border: none;
+        color: #6c757d;
         font-size: 1rem;
+        padding: 0.75rem 1.25rem;
+        margin-bottom: -2px;
+        background: transparent;
     }
-
     .user-profile-tab .nav-link:hover {
-        background-color: #e2e6ea;
-        color: #212529;
+        border: none;
+        color: #495057;
     }
-
-    .user-profile-tab .nav-link.active,
-    .user-profile-tab .nav-link.active:hover {
-        background-color: #0d6efd;
-        border-color: #0d6efd;
-        color: #fff;
+    .user-profile-tab .nav-link.active {
+        color: #0d6efd;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid #0d6efd;
     }
-
-    .user-profile-tab .nav-link.active i {
-        color: #fff;
+    .user-profile-tab .nav-link i {
+        font-size: 1.1rem;
     }
 
     .dataTables_wrapper .dataTables_info,
@@ -273,7 +271,7 @@
         initializeDataTable('real-users-table', '/Api/GetRealUsers', false);
         initializeDataTable('template-users-table', '/Api/GetTemplateUsers', true);
 
-        $('button[data-bs-toggle="pill"]').on('shown.bs.tab', function (e) {
+        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
             $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
         });
     });
