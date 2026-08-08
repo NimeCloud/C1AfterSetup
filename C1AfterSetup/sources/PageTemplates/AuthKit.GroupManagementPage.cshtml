@@ -82,12 +82,12 @@
             { text: 'Add', name: 'add' },
             { extend: 'selected', text: 'Edit', name: 'edit' },
             { extend: 'selected', text: 'Delete', name: 'delete' },
-            { className: 'dt-button-divider', text: '', action: function (e) { e.preventDefault(); } },
             {
-                extend: 'selected', text: 'Manage Members',
+                text: 'Manage Members',
                 action: function (e, dt, node, config) {
                     var selectedData = dt.rows({ selected: true }).data()[0];
-                    if (selectedData) openGroupUserManagementModal(selectedData.Id, selectedData.GroupName);
+                    if (!selectedData) { Swal.fire('Info', 'Please select a group first.', 'info'); return; }
+                    openGroupUserManagementModal(selectedData.Id, selectedData.GroupName);
                 }
             }
         ];
@@ -152,57 +152,107 @@
             var changes = { added: new Set(), removed: new Set() };
             var initialMemberIds = new Set();
             var modalInstance, table;
+            var forceClose = false;
 
+            // First fetch the group's current member IDs, then build the modal + DataTable
+            // inside the success callback so initialMemberIds is populated before rendering.
             $.ajax({
                 url: '/Api/GetAllUserIdsForGroup', type: 'POST', contentType: 'text/plain; charset=utf-8',
                 data: JSON.stringify({ groupId: groupId }),
-                success: function (r) { if (r.data) r.data.forEach(function (id) { initialMemberIds.add(id.toString()); }); }
-            });
+                success: function (response) {
+                    if (response.data) {
+                        response.data.forEach(function (id) { initialMemberIds.add(id.toString()); });
+                    }
 
-            var mh = '<div class="modal fade" id="groupUsersModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">' +
-                '<div class="modal-header"><h5 class="modal-title">' + groupName + ' - Group Members</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>' +
-                '<div class="modal-body"><table id="users-for-group-table" class="table table-bordered" style="width:100%"><thead><tr><th></th><th>User</th><th>Email</th></tr></thead></table></div>' +
-                '<div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button class="btn btn-primary" id="saveGroupMembersBtn">Save</button></div></div></div></div>';
+                    var mh = '<div class="modal fade" id="groupUsersModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">' +
+                        '<div class="modal-header"><h5 class="modal-title">' + groupName + ' - Group Members</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>' +
+                        '<div class="modal-body"><table id="users-for-group-table" class="table table-bordered" style="width:100%"><thead><tr><th></th><th>User</th><th>Email</th><th></th></tr></thead></table></div>' +
+                        '<div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button class="btn btn-primary" id="saveGroupMembersBtn">Save</button></div></div></div></div>';
 
-            $('#groupUsersModal').remove();
-            $('body').append(mh);
-            modalInstance = new bootstrap.Modal(document.getElementById('groupUsersModal'));
-            modalInstance.show();
+                    $('#groupUsersModal').remove();
+                    $('body').append(mh);
+                    modalInstance = new bootstrap.Modal(document.getElementById('groupUsersModal'));
+                    modalInstance.show();
 
-            table = $('#users-for-group-table').DataTable({
-                ajax: {
-                    url: '/Api/GetUsersForGroupManagement', type: 'POST', contentType: 'text/plain; charset=utf-8',
-                    data: function (d) { return JSON.stringify({ GroupId: groupId, DtRequest: d }); },
-                    error: function (xhr) { showTableLoadError('users-for-group-table', xhr); }
-                },
-                columns: [
-                    { data: 'id', orderable: false, render: function (d) { return '<input type="checkbox" class="dt-checkbox" value="' + d + '">'; } },
-                    { data: 'userName' }, { data: 'email' }
-                ],
-                drawCallback: function () {
-                    $('#users-for-group-table tbody input.dt-checkbox').each(function () {
-                        var uid = $(this).val();
-                        $(this).prop('checked', (initialMemberIds.has(uid) && !changes.removed.has(uid)) || changes.added.has(uid));
+                    table = $('#users-for-group-table').DataTable({
+                        serverSide: true,
+                        ajax: {
+                            url: '/Api/GetUsersForGroupManagement', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                            data: function (d) { return JSON.stringify({ GroupId: groupId, DtRequest: d }); },
+                            error: function (xhr) { showTableLoadError('users-for-group-table', xhr); }
+                        },
+                        columns: [
+                            {
+                                data: 'id', orderable: false,
+                                render: function (d, type, row) {
+                                    var uid = row.id ? row.id.toString() : (d ? d.toString() : '');
+                                    var isSelected = (initialMemberIds.has(uid) && !changes.removed.has(uid)) || changes.added.has(uid);
+                                    return '<input type="checkbox" class="form-check-input dt-checkbox" value="' + uid + '"' + (isSelected ? ' checked' : '') + '>';
+                                }
+                            },
+                            { data: 'userName' }, { data: 'email' },
+                            {
+                                data: null, orderable: false,
+                                render: function (data, type, row) {
+                                    var uid = row.id ? row.id.toString() : '';
+                                    var isMember = (initialMemberIds.has(uid) && !changes.removed.has(uid)) || changes.added.has(uid);
+                                    if (isMember) {
+                                        return '<button class="btn btn-sm btn-outline-danger leave-user-btn" data-uid="' + uid + '">Remove</button>';
+                                    } else {
+                                        return '<button class="btn btn-sm btn-outline-success add-user-btn" data-uid="' + uid + '">Add</button>';
+                                    }
+                                }
+                            }
+                        ],
+                        drawCallback: function () {
+                            var api = this.api();
+                            api.rows({ page: 'current' }).nodes().each(function (node, index) {
+                                var rowData = api.row(index).data();
+                                if (rowData) {
+                                    var uid = rowData.id ? rowData.id.toString() : '';
+                                    var isSelected = (initialMemberIds.has(uid) && !changes.removed.has(uid)) || changes.added.has(uid);
+                                    $(node).toggleClass('table-success', isSelected);
+                                    $(node).find('.dt-checkbox').prop('checked', isSelected);
+                                }
+                            });
+                        }
                     });
+
+                    // Per-row Add/Remove buttons (instant)
+                    $('#users-for-group-table tbody').on('click', '.add-user-btn', function () {
+                        var uid = $(this).data('uid');
+                        changes.added.add(uid);
+                        changes.removed.delete(uid);
+                        table.ajax.reload(null, false);
+                    });
+                    $('#users-for-group-table tbody').on('click', '.leave-user-btn', function () {
+                        var uid = $(this).data('uid');
+                        changes.removed.add(uid);
+                        changes.added.delete(uid);
+                        table.ajax.reload(null, false);
+                    });
+
+                    $('#users-for-group-table tbody').on('change', '.dt-checkbox', function () {
+                        var uid = $(this).val(), checked = this.checked;
+                        if (initialMemberIds.has(uid)) { checked ? changes.removed.delete(uid) : changes.removed.add(uid); changes.added.delete(uid); }
+                        else { checked ? changes.added.add(uid) : changes.added.delete(uid); }
+                    });
+
+                    $('#saveGroupMembersBtn').on('click', function () {
+                        $.ajax({
+                            url: '/Api/UpdateGroupMembersDelta', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                            data: JSON.stringify({ groupId: groupId, userIdsToAdd: Array.from(changes.added), userIdsToRemove: Array.from(changes.removed) }),
+                            success: function () { forceClose = true; modalInstance.hide(); Swal.fire('Success!', 'Members updated.', 'success'); },
+                            error: function () { Swal.fire('Error!', 'Update failed.', 'error'); }
+                        });
+                    });
+
+                    $('#groupUsersModal').on('hidden.bs.modal', function () { $(this).remove(); if (table) table.destroy(); });
+                },
+                error: function () {
+                    Swal.fire('Error!', 'Failed to load group members.', 'error');
                 }
             });
-
-            $('#users-for-group-table tbody').on('change', '.dt-checkbox', function () {
-                var uid = $(this).val(), checked = this.checked;
-                if (initialMemberIds.has(uid)) { checked ? changes.removed.delete(uid) : changes.removed.add(uid); changes.added.delete(uid); }
-                else { checked ? changes.added.add(uid) : changes.added.delete(uid); }
-            });
-
-            $('#saveGroupMembersBtn').on('click', function () {
-                $.ajax({
-                    url: '/Api/UpdateGroupMembersDelta', type: 'POST', contentType: 'text/plain; charset=utf-8',
-                    data: JSON.stringify({ groupId: groupId, userIdsToAdd: Array.from(changes.added), userIdsToRemove: Array.from(changes.removed) }),
-                    success: function () { modalInstance.hide(); Swal.fire('Success!', 'Members updated.', 'success'); },
-                    error: function () { Swal.fire('Error!', 'Update failed.', 'error'); }
-                });
-            });
-
-            $('#groupUsersModal').on('hidden.bs.modal', function () { $(this).remove(); if (table) table.destroy(); });
         }
     });
     //]]>

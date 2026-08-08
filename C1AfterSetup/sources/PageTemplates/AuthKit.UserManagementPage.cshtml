@@ -181,10 +181,10 @@
         if (!isTemplateTable) {
             buttons.push({ className: 'dt-button-divider', text: '', action: function (e) { e.preventDefault(); } });
             buttons.push({
-                extend: 'selected', text: 'Change Password',
+                text: 'Change Password',
                 action: function (e, dt, node, config) {
                     var selectedData = dt.rows({ selected: true }).data()[0];
-                    if (!selectedData) return;
+                    if (!selectedData) { Swal.fire('Info', 'Please select a user first.', 'info'); return; }
                     Swal.fire({
                         title: 'New password for ' + selectedData.UserName,
                         html: '<input type="password" id="swal-input-password" class="swal2-input" placeholder="New Password">' +
@@ -210,10 +210,11 @@
                 }
             });
             buttons.push({
-                extend: 'selected', text: 'Manage Groups',
+                text: 'Manage Groups',
                 action: function (e, dt, node, config) {
                     var selectedData = dt.rows({ selected: true }).data()[0];
-                    if (selectedData) openUserGroupManagementModal(selectedData.Id, selectedData.UserName);
+                    if (!selectedData) { Swal.fire('Info', 'Please select a user first.', 'info'); return; }
+                    openUserGroupManagementModal(selectedData.Id, selectedData.UserName);
                 }
             });
         }
@@ -304,7 +305,7 @@
 
         $(document).on('alteditor:edit_dialog_opened', '.altEditor-modal', function () {
             $(this).find('#alteditor-row-Id').hide();
-            var rowData = $(this).data('altEditor-data');
+            var rowData = $('#real-users-table, #template-users-table').DataTable().rows({ selected: true }).data()[0];
             var isTemplate = rowData && rowData.IsTemplate;
             if (isTemplate) {
                 $('#alteditor-row-IsActive, #alteditor-row-IsTemplate, #alteditor-row-PasswordHash').hide();
@@ -319,83 +320,121 @@
         var changes = { added: new Set(), removed: new Set() };
         var initialMemberIds = new Set();
         var modalInstance, table;
+        var forceClose = false;
 
+        // First, fetch the user's current group memberships.
+        // The modal + DataTable are created INSIDE the success callback so
+        // initialMemberIds is always populated before the table renders.
         $.ajax({
             url: '/Api/GetAllGroupIdsForUser', type: 'POST', contentType: 'text/plain; charset=utf-8',
             data: JSON.stringify({ userId: userId }),
-            success: function (r) { if (r.data) r.data.forEach(function (id) { initialMemberIds.add(id.toString()); }); }
-        });
+            success: function (response) {
+                if (response.data) {
+                    response.data.forEach(function (id) { initialMemberIds.add(id.toString()); });
+                }
 
-        var modalHtml = '<div class="modal fade" id="userGroupsModal" tabindex="-1">' +
-            '<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">' +
-            '<div class="modal-header"><h5 class="modal-title">' + userName + ' - Group Memberships</h5>' +
-            '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
-            '<div class="modal-body"><table id="groups-for-user-table" class="table table-bordered" style="width:100%">' +
-            '<thead><tr><th></th><th>Group Name</th><th>Description</th></tr></thead><tbody></tbody></table></div>' +
-            '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>' +
-            '<button type="button" class="btn btn-primary" id="saveUserGroupsBtn">Save</button></div></div></div></div>';
+                var modalHtml = '<div class="modal fade" id="userGroupsModal" tabindex="-1">' +
+                    '<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">' +
+                    '<div class="modal-header"><h5 class="modal-title">' + userName + ' - Group Memberships</h5>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
+                    '<div class="modal-body"><table id="groups-for-user-table" class="table table-bordered" style="width:100%">' +
+                    '<thead><tr><th></th><th>Group Name</th><th>Description</th><th></th></tr></thead><tbody></tbody></table></div>' +
+                    '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>' +
+                    '<button type="button" class="btn btn-primary" id="saveUserGroupsBtn">Save</button></div></div></div></div>';
 
-        $('#userGroupsModal').remove();
-        $('body').append(modalHtml);
-        modalInstance = new bootstrap.Modal(document.getElementById('userGroupsModal'));
-        modalInstance.show();
+                $('#userGroupsModal').remove();
+                $('body').append(modalHtml);
+                modalInstance = new bootstrap.Modal(document.getElementById('userGroupsModal'));
+                modalInstance.show();
 
-        table = $('#groups-for-user-table').DataTable({
-            ajax: {
-                url: '/Api/GetAllGroupsForUserManagement', type: 'POST', contentType: 'text/plain; charset=utf-8',
-                data: function (d) { return JSON.stringify({ UserId: userId, DtRequest: d }); },
-                error: function (xhr) { showTableLoadError('groups-for-user-table', xhr); }
-            },
-            columns: [
-                {
-                    data: 'id', orderable: false, render: function (d, type, row) {
-                        var gid = row.id ? row.id.toString() : (d ? d.toString() : '');
-                        var isSelected = (initialMemberIds.has(gid) && !changes.removed.has(gid)) || changes.added.has(gid);
-                        return '<input type="checkbox" class="form-check-input dt-checkbox" value="' + gid + '"' + (isSelected ? ' checked' : '') + '>';
-                    }
-                },
-                { data: 'groupName' }, { data: 'description' }
-            ],
-            drawCallback: function () {
-                var api = this.api();
-                api.rows({ page: 'current' }).nodes().each(function (node, index) {
-                    var rowData = api.row(index).data();
-                    if (rowData) {
-                        var gid = rowData.id ? rowData.id.toString() : '';
-                        var isSelected = (initialMemberIds.has(gid) && !changes.removed.has(gid)) || changes.added.has(gid);
-                        $(node).toggleClass('table-success', isSelected);
-                        $(node).find('.dt-checkbox').prop('checked', isSelected);
+                table = $('#groups-for-user-table').DataTable({
+                    serverSide: true,
+                    ajax: {
+                        url: '/Api/GetAllGroupsForUserManagement', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                        data: function (d) { return JSON.stringify({ UserId: userId, DtRequest: d }); },
+                        error: function (xhr) { showTableLoadError('groups-for-user-table', xhr); }
+                    },
+                    columns: [
+                        {
+                            data: 'id', orderable: false, render: function (d, type, row) {
+                                var gid = row.id ? row.id.toString() : (d ? d.toString() : '');
+                                var isSelected = (initialMemberIds.has(gid) && !changes.removed.has(gid)) || changes.added.has(gid);
+                                return '<input type="checkbox" class="form-check-input dt-checkbox" value="' + gid + '"' + (isSelected ? ' checked' : '') + '>';
+                            }
+                        },
+                        { data: 'groupName' }, { data: 'description' },
+                        {
+                            data: null, orderable: false,
+                            render: function (data, type, row) {
+                                var gid = row.id ? row.id.toString() : '';
+                                var isMember = (initialMemberIds.has(gid) && !changes.removed.has(gid)) || changes.added.has(gid);
+                                if (isMember) {
+                                    return '<button class="btn btn-sm btn-outline-danger leave-group-btn" data-gid="' + gid + '">Leave</button>';
+                                } else {
+                                    return '<button class="btn btn-sm btn-outline-success join-group-btn" data-gid="' + gid + '">Join</button>';
+                                }
+                            }
+                        }
+                    ],
+                    drawCallback: function () {
+                        var api = this.api();
+                        api.rows({ page: 'current' }).nodes().each(function (node, index) {
+                            var rowData = api.row(index).data();
+                            if (rowData) {
+                                var gid = rowData.id ? rowData.id.toString() : '';
+                                var isSelected = (initialMemberIds.has(gid) && !changes.removed.has(gid)) || changes.added.has(gid);
+                                $(node).toggleClass('table-success', isSelected);
+                                $(node).find('.dt-checkbox').prop('checked', isSelected);
+                            }
+                        });
                     }
                 });
+
+                // Per-row Join/Leave buttons (instant, no Save needed)
+                $('#groups-for-user-table tbody').on('click', '.join-group-btn', function () {
+                    var gid = $(this).data('gid');
+                    changes.added.add(gid);
+                    changes.removed.delete(gid);
+                    table.ajax.reload(null, false);
+                });
+                $('#groups-for-user-table tbody').on('click', '.leave-group-btn', function () {
+                    var gid = $(this).data('gid');
+                    changes.removed.add(gid);
+                    changes.added.delete(gid);
+                    table.ajax.reload(null, false);
+                });
+
+                $('#groups-for-user-table tbody').on('change', '.dt-checkbox', function () {
+                    var gid = $(this).val();
+                    var isChecked = this.checked;
+                    $(this).closest('tr').toggleClass('table-success', isChecked);
+                    if (initialMemberIds.has(gid)) {
+                        if (!isChecked) { changes.removed.add(gid); changes.added.delete(gid); }
+                        else { changes.removed.delete(gid); }
+                    } else {
+                        if (isChecked) { changes.added.add(gid); changes.removed.delete(gid); }
+                        else { changes.added.delete(gid); }
+                    }
+                });
+
+                $('#saveUserGroupsBtn').on('click', function () {
+                    var btn = $(this);
+                    btn.prop('disabled', true);
+                    $.ajax({
+                        url: '/Api/UpdateUserGroupsDelta', type: 'POST', contentType: 'text/plain; charset=utf-8',
+                        data: JSON.stringify({ userId: userId, groupIdsToAdd: Array.from(changes.added), groupIdsToRemove: Array.from(changes.removed) }),
+                        success: function () { forceClose = true; modalInstance.hide(); Swal.fire('Success!', 'Group memberships updated.', 'success'); },
+                        error: function () { Swal.fire('Error!', 'Update failed.', 'error'); },
+                        complete: function () { btn.prop('disabled', false); }
+                    });
+                });
+
+                $('#userGroupsModal').on('hidden.bs.modal', function () { $(this).remove(); if (table) table.destroy(); });
+            },
+            error: function () {
+                Swal.fire('Error!', 'Failed to load group memberships.', 'error');
             }
         });
-
-        $('#groups-for-user-table tbody').on('change', '.dt-checkbox', function () {
-            var gid = $(this).val();
-            var isChecked = this.checked;
-            $(this).closest('tr').toggleClass('table-success', isChecked);
-            if (initialMemberIds.has(gid)) {
-                if (!isChecked) { changes.removed.add(gid); changes.added.delete(gid); }
-                else { changes.removed.delete(gid); }
-            } else {
-                if (isChecked) { changes.added.add(gid); changes.removed.delete(gid); }
-                else { changes.added.delete(gid); }
-            }
-        });
-
-        $('#saveUserGroupsBtn').on('click', function () {
-            var btn = $(this);
-            btn.prop('disabled', true);
-            $.ajax({
-                url: '/Api/UpdateUserGroupsDelta', type: 'POST', contentType: 'text/plain; charset=utf-8',
-                data: JSON.stringify({ userId: userId, groupIdsToAdd: Array.from(changes.added), groupIdsToRemove: Array.from(changes.removed) }),
-                success: function () { modalInstance.hide(); Swal.fire('Success!', 'Group memberships updated.', 'success'); },
-                error: function () { Swal.fire('Error!', 'Update failed.', 'error'); },
-                complete: function () { btn.prop('disabled', false); }
-            });
-        });
-
-        $('#userGroupsModal').on('hidden.bs.modal', function () { $(this).remove(); if (table) table.destroy(); });
     }
     //]]>
 </script>

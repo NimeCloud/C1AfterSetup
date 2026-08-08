@@ -519,3 +519,100 @@ CSS/JS from a local `~/assets/authkit/` folder (deployed via manifest `assets` �
 
 **Test (localhost:2681 = `R:\deploy_pkg_v6`):** `/AuthKit/Users` redirects to login when unauthenticated
 (auth-only ✓); all `~/assets/authkit/*` return HTTP 200; login page loads local bootstrap/jquery/sweetalert2.
+
+---
+
+## 20. Output Website VS Settings (No-Build + Port 2681)
+
+The deployed output must be ready to open in VS 2022 with zero friction:
+
+### `Website.slnx` template (overrides source copy)
+The source site's `Website.slnx` contains stale `AspNetCompiler.*` properties that trigger
+`aspnet_compiler.exe` precompilation on F5 → painfully slow on C1 sites. It also has the wrong
+`VWDPort` and `PhysicalPath` from the source machine.
+
+**The pipeline MUST overwrite `Website.slnx` in the output** with this minimal template:
+
+```xml
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+  </Configurations>
+  <Project Path="." Type="Website" DisplayName="Website" Id="475b2645-5167-762d-ecc9-695ca0cd0c01">
+    <Properties Name="WebsiteProperties">
+      <Property Name="TargetFrameworkMoniker" Value="".NETFramework,Version%3Dv4.8"" />
+      <Property Name="VWDPort" Value=""2681"" />
+    </Properties>
+  </Project>
+</Solution>
+```
+
+**Key points:**
+- **No `AspNetCompiler.*` properties** → VS won't run `aspnet_compiler` on F5 (equivalent to
+  unchecking "Build this project" in Property Pages → Build).
+- **`VWDPort` = 2681** → IIS Express always starts on port 2681.
+- **No `PhysicalPath`** → VS uses the current project folder, not a stale source path.
+
+### `applicationhost.config` port fix
+The `.vs/Website.slnx/config/applicationhost.config` contains the IIS Express binding. When
+VS creates this file on first open, it reads `VWDPort` from `.slnx` — but only if `.vs/` is
+deleted. If `.vs/` exists from a previous open, the port must be fixed there too:
+
+```xml
+<binding protocol="http" bindingInformation="*:2681:localhost" />
+```
+
+**Pipeline behavior:** The cleanest approach is to NOT deploy `.vs/` (it's VS-generated).
+The `.slnx` with `VWDPort=2681` ensures correct port on first VS open. If the user has an
+existing `.vs/`, they delete it and reopen.
+
+### Implementation in pipeline
+A step (or `PreflightStep` post-copy) writes this `Website.slnx` template to the output root,
+overwriting whatever the source site had.
+
+---
+
+## 21. SQL Data Provider: What Happens When SQL Is Unavailable
+
+### Problem
+The `ConfigureSqlDataProviderStep` registers `DynamicSqlDataProvider` in `Composite.config` with
+`connectionStringName="c1"`. C1 CMS initializes **all registered providers** at startup
+(`Application_Start`), regardless of whether any types are routed to them. If the SQL server
+referenced by the `c1` connection string is unreachable:
+
+```
+System.Data.SqlClient.SqlException: provider: Named Pipes Provider, error: 40
+  - SQL Server'a bağlantı açılamadı
+```
+
+The site crashes before it starts.
+
+### Why the provider is registered but no types use it
+- `DynamicSqlDataProvider.config` has **empty `<Interfaces />`** — zero types route to SQL.
+- The provider is registered as *infrastructure* (ready for future `DataProviderCopier` migration).
+- But C1 boots the provider anyway → connection attempt → crash.
+
+### Quick fix (SQL unavailable, no data loss)
+Remove the `DynamicSqlDataProvider` entry from `Composite.config`:
+
+```xml
+<!-- REMOVE this line from <DataProviderPlugins>: -->
+<add connectionStringName="c1" ... name="DynamicSqlDataProvider" />
+```
+
+**What survives:**
+- `DynamicSqlDataProvider.config` — harmless without provider registration
+- `web.config` `<connectionStrings name="c1">` — harmless unused string
+- All XML data types — continue working (default provider is `DynamicXmlDataProvider`)
+- Zero data loss (nothing was in SQL)
+
+**What to do when SQL becomes available again:**
+- Re-add the provider line to `Composite.config`
+- Or re-run `C1AfterSetup.exe -site "r:\deploy-api" -mode offline -force`
+
+### Permanent pipeline fix
+`ConfigureSqlDataProviderStep` already checks `sqlCfg.Enabled` in the manifest. Set
+`"enabled": false` in `setup.manifest.json` → `sqlDataProvider` to skip SQL registration
+entirely. For hybrid mode (provider registered but no interfaces), the step creates empty
+`DynamicSqlDataProvider.config` but the provider registration in `Composite.config` is
+what causes the startup crash when SQL is down.
