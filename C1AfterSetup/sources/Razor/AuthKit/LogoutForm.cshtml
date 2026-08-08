@@ -1,19 +1,67 @@
 ﻿@inherits RazorFunction
 @using System
+@using System.Web
 
 @functions {
     public override string FunctionDescription => "AuthKit logout handler";
 }
 
 @{
-    AuthKit.Authentication.AuthenticationManager.Logout();
-    var loginPageId = AuthKit.Authentication.AuthenticationManager.LoginPageId;
-    if (loginPageId != Guid.Empty)
-    {
-        Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(loginPageId, "~/Login"));
-    }
-    else
-    {
-        Response.Redirect(AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/Login"));
-    }
+    var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
+    var loginPageUrl = AuthKit.C1.C1UrlHelper.GetUrlFromPageId(
+        AuthKit.Authentication.AuthenticationManager.LoginPageId != Guid.Empty
+            ? AuthKit.Authentication.AuthenticationManager.LoginPageId
+            : new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"),
+        "~/Login");
+}
+
+@if (currentUser == null)
+{
+    // Already logged out — redirect to login immediately
+    Response.Redirect(loginPageUrl);
+}
+else
+{
+    <div class="text-center">
+        <h5 class="mb-1 fs-5">You are logged in as @currentUser.UserName</h5>
+        <p class="text-muted mb-4">Click the button below to sign out.</p>
+        <button type="button" id="logout-btn" class="btn btn-primary w-100 py-2">Log Out</button>
+    </div>
+
+    <script>
+        //<![CDATA[
+        $('#logout-btn').on('click', function () {
+            Swal.fire({
+                title: 'Signing out...',
+                text: 'Please wait.',
+                allowOutsideClick: false,
+                didOpen: function () { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                type: 'POST',
+                url: '/Api/Logout',
+                contentType: 'text/plain; charset=utf-8',
+                data: '{}',
+                success: function () {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Signed out!',
+                        text: 'Redirecting to login...',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    setTimeout(function () { window.location.href = '@loginPageUrl'; }, 1500);
+                },
+                error: function () {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Could not sign out. Please try again.'
+                    });
+                }
+            });
+        });
+        //]]>
+    </script>
 }
