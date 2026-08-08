@@ -120,6 +120,17 @@ public class ApiHandler : IHttpHandler
                      ?? context.Request.QueryString["action"]
                      ?? "time";
 
+        // Ensure permissions/groups are seeded before any API call is processed.
+        // Idempotent — only runs once per app domain lifetime.
+        try { AuthKit.Startup.AuthStartupHandler.Initialize(); } catch { }
+        // Ensure the current user is a member of System.Administrators (idempotent).
+        try
+        {
+            var cu = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
+            if (cu != null) AuthKit.Authorization.AuthorizationManager.EnsureAdministratorMembership(cu.Id);
+        }
+        catch { }
+
         try
         {
             switch (action)
@@ -298,6 +309,9 @@ public class ApiHandler : IHttpHandler
     // ============ Kullanıcı Yönetimi ============
     private static object GetUsers()
     {
+        var permissionError = AuthKit.Authorization.AuthorizationManager.CheckApiPermission(AuthKit.Authorization.PermissionKeys.Auth.Users.View);
+        if (permissionError != null) return permissionError;
+
         using (var conn = new DataConnection())
         {
             var users = conn.Get<AuthKit.Data.Authentication.User>().OrderBy(u => u.UserName).ToList();
@@ -307,6 +321,9 @@ public class ApiHandler : IHttpHandler
 
     private static object GetRealUsers()
     {
+        var permissionError = AuthKit.Authorization.AuthorizationManager.CheckApiPermission(AuthKit.Authorization.PermissionKeys.Auth.Users.View);
+        if (permissionError != null) return permissionError;
+
         using (var conn = new DataConnection())
         {
             var users = conn.Get<AuthKit.Data.Authentication.User>()
@@ -319,6 +336,9 @@ public class ApiHandler : IHttpHandler
 
     private static object GetTemplateUsers()
     {
+        var permissionError = AuthKit.Authorization.AuthorizationManager.CheckApiPermission(AuthKit.Authorization.PermissionKeys.Auth.Users.View);
+        if (permissionError != null) return permissionError;
+
         using (var conn = new DataConnection())
         {
             var users = conn.Get<AuthKit.Data.Authentication.User>()
@@ -331,6 +351,9 @@ public class ApiHandler : IHttpHandler
 
     private static object GetAllUsersForDropdown()
     {
+        var permissionError = AuthKit.Authorization.AuthorizationManager.CheckApiPermission(AuthKit.Authorization.PermissionKeys.Auth.Users.View);
+        if (permissionError != null) return permissionError;
+
         return new { data = AuthKit.Authentication.AuthenticationManager.GetAllActiveUsersSummary() };
     }
 
@@ -425,6 +448,9 @@ public class ApiHandler : IHttpHandler
     // ============ Grup Yönetimi ============
     private static object GetGroups()
     {
+        var permissionError = AuthKit.Authorization.AuthorizationManager.CheckApiPermission(AuthKit.Authorization.PermissionKeys.Auth.Groups.View);
+        if (permissionError != null) return permissionError;
+
         using (var conn = new DataConnection())
         {
             var groups = conn.Get<AuthKit.Data.Authorization.Group>()
@@ -437,6 +463,9 @@ public class ApiHandler : IHttpHandler
 
     private static object GetAllGroupsForDropdown()
     {
+        var permissionError = AuthKit.Authorization.AuthorizationManager.CheckApiPermission(AuthKit.Authorization.PermissionKeys.Auth.Groups.View);
+        if (permissionError != null) return permissionError;
+
         using (var conn = new DataConnection())
         {
             var groups = conn.Get<AuthKit.Data.Authorization.Group>()
@@ -541,6 +570,9 @@ public class ApiHandler : IHttpHandler
 
     private static object GetUsersForGroupManagement(HttpContext context)
     {
+        var permissionError = AuthKit.Authorization.AuthorizationManager.CheckApiPermission(AuthKit.Authorization.PermissionKeys.Auth.Groups.Edit);
+        if (permissionError != null) return permissionError;
+
         var payload = JsonConvert.DeserializeObject<GetUsersForGroupManagementRequest>(ReadBody(context));
         string groupId = payload.GroupId;
         DataTableRequest request = payload.DtRequest ?? new DataTableRequest { Start = 0, Length = 10 };
@@ -659,6 +691,9 @@ public class ApiHandler : IHttpHandler
     // ============ Yetki (Permission) Yönetimi ============
     private static object GetPermissions()
     {
+        var permissionError = AuthKit.Authorization.AuthorizationManager.CheckApiPermission(AuthKit.Authorization.PermissionKeys.Auth.Groups.View);
+        if (permissionError != null) return permissionError;
+
         using (var conn = new DataConnection())
         {
             var permissions = conn.Get<AuthKit.Data.Authorization.Permission>().ToList();
