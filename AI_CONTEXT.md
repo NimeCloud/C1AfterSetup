@@ -4,7 +4,7 @@
 > Debugging gotchas, command patterns, constants, and methods are collected here.
 > A new agent should treat this file as the **FIRST file to read**.
 >
-> **Last updated:** 2026-08-07 (required + optional NuGet packages documented; binding-redirect + Verify fixes; all docs in English)
+> **Last updated:** 2026-08-08 (package matrix verified; all 9 deployed DLLs at net48 max; SweetAlert2 login/logout UX; auth-only → full CheckApiPermission with auto-seed; plan: nuget-package-matrix-upgradability.md)
 
 ---
 
@@ -416,11 +416,32 @@ copy /y "C1AfterSetup\sources\PageTemplates\AdminTools.DataProviderSelector.csht
 ## 17. NuGet Package Management (AuthKit-relevant, fresh-install order)
 
 ### Authoritative source
-- Reference site: `E:\_CODE_\WebDev\SystemC1\Website` (working precursor AuthKit)
-- **Package pin (authoritative):** `E:\_CODE_\WebDev\SystemC1\Website\packages.config`
+- Reference site: `c:\LocaThor\Website` (working AuthKit + DataTables admin)
+- **Package pin (authoritative):** `c:\LocaThor\Website\packages.config` (103 packages, net48)
+  - Also: `E:\_CODE_\WebDev\SystemC1\Website` (original precursor, same package versions)
 - Package store: `E:\_CODE_\WebDev\SystemC1\packages` — contains OLD + NEW versions (test history).
   **Always resolve via `packages.config`, never by the newest folder.**
 - Deploy source for DLLs: `C1AfterSetup/sources/bin` (listed in `setup.manifest.json` `binDependencies`).
+
+### Deployed DLLs (all 9 verified at maximum net48 versions, 2026-08-08)
+
+| DLL | Version | Package | net48 max? |
+|-----|---------|---------|------------|
+| `BCrypt.Net-Next.dll` | 4.1.0 | BCrypt.Net-Next | ✅ |
+| `Newtonsoft.Json.dll` | 13.0.3 | Newtonsoft.Json | ✅ (needs binding redirect) |
+| `Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll` | 2.0.1 | Microsoft.CodeDom.Providers.DotNetCompilerPlatform | ✅ |
+| `System.Memory.dll` | 4.6.3 | System.Memory | ✅ |
+| `System.Buffers.dll` | 4.6.1 | System.Buffers | ✅ |
+| `System.Runtime.CompilerServices.Unsafe.dll` | 6.1.2 | System.Runtime.CompilerServices.Unsafe | ✅ |
+| `System.Numerics.Vectors.dll` | 4.6.1 | System.Numerics.Vectors | ✅ |
+| `System.Threading.Tasks.Extensions.dll` | 4.6.0 | System.Threading.Tasks.Extensions | ✅ |
+| `System.ValueTuple.dll` | 4.5.0 | System.ValueTuple | ✅ |
+
+> **Full package matrix & upgradability analysis:** [`plans/nuget-package-matrix-upgradability.md`](plans/nuget-package-matrix-upgradability.md)
+>
+> **Bottom line:** All 9 deployed DLLs are at the maximum version compatible with .NET Framework 4.8.
+> C1 CMS 6.13.0 core packages (~25) are frozen. Optional packages (~40) are not deployed.
+> No package upgrades needed at this time.
 
 ### Install order (VS 2022 method: leaf/dependency FIRST, then target package)
 When adding a package, VS 2022 lists its dependencies. **Cancel the install**, manually install the
@@ -467,27 +488,28 @@ Two bugs meant the AuthKit redirects were logged but NEVER written to disk:
 ## 18. Optional C1 CMS / NuGet Packages (NOT auto-deployed)
 
 The pipeline ships ONLY the AuthKit-required DLLs (`sources/bin` + manifest `binDependencies`).
-The reference site (`E:\_CODE_\WebDev\SystemC1\Website`) has ~73 more DLLs that this tool
+The reference site (`c:\LocaThor\Website`) has 103 packages (~200 DLLs) that this tool
 deliberately does NOT deploy — they are C1 CMS packages installable/upgradeable later from
 **C1 Console → Packages** (or NuGet) when a feature needs them.
 
 **Inventory (exact pins):** [`C1AfterSetup/Config/optional.packages.json`](C1AfterSetup/Config/optional.packages.json)
+**Full matrix:** [`plans/nuget-package-matrix-upgradability.md`](plans/nuget-package-matrix-upgradability.md)
 
-| Group | Packages (pinned) |
-|---|---|
-| Google OAuth | `Google.Apis 1.71.0`, `Google.Apis.Auth 1.71.0`, `Google.Apis.Core 1.71.0`, `Google.Apis.Oauth2.v2 1.68.0.1869` |
-| E-mail (SMTP) | `MailKit 4.13.0`, `MimeKit 4.15.1`, `BouncyCastle.Cryptography 2.6.2`, `Portable.BouncyCastle 1.8.1.3`, `SharpZipLib 1.4.2` |
-| Scheduled Tasks | `Hangfire.CompositeC1 1.6.20`, `Hangfire.Core 1.8.14`, `CompositeC1.ScheduledTasks 0.5.1`, `Common.Logging` |
-| C1 Contributions | `CompositeC1Contrib.Core 0.9.0` |
-| Real-time / Messaging | `MQTTnet 4.3.6.1152`, `SignalR.Core 2.4.3`, `Microsoft.Owin* 4.2.3`/`2.1.0`, `Owin 1.0`, `WampSharp 18.3.1` family |
-| C1 Search | `Orckestra.Search`, `Orckestra.Search.LuceneNET`, `Lucene.Net*`, `BoboBrowse.Net`, `C5` |
-| JSON Bson | `Newtonsoft.Json.Bson 1.0.2` |
-| .NET Standard facades | `NETStandard.Library 1.6.1` family (`System.*` 4.3.0 shims, auto-resolved by NuGet) |
+| Group | Packages (pinned) | net48 max? |
+|---|---|---|
+| Google OAuth | `Google.Apis 1.71.0`, `Google.Apis.Auth 1.71.0`, `Google.Apis.Core 1.71.0`, `Google.Apis.Oauth2.v2 1.68.0.1869` | ✅ |
+| E-mail (SMTP) | `MailKit 4.13.0`, `MimeKit 4.15.1`, `BouncyCastle.Cryptography 2.6.2`, `Portable.BouncyCastle 1.8.1.3`, `SharpZipLib 1.4.2` | ✅ |
+| Scheduled Tasks | `Hangfire.CompositeC1 1.6.20`, `Hangfire.Core 1.8.14`, `CompositeC1.ScheduledTasks 0.5.1`, `Common.Logging` | ✅ |
+| C1 Contributions | `CompositeC1Contrib.Core 0.9.0` | 🔒 C1-locked |
+| Real-time / Messaging | `MQTTnet 4.3.6.1152`, `SignalR.Core 2.4.3`, `Microsoft.Owin* 4.2.3`/`2.1.0`, `Owin 1.0`, `WampSharp 18.3.1` family | ✅ |
+| C1 Search | `Orckestra.Search`, `Orckestra.Search.LuceneNET`, `Lucene.Net*`, `BoboBrowse.Net`, `C5` | 🔒 C1-locked |
+| JSON Bson | `Newtonsoft.Json.Bson 1.0.2` | ✅ |
+| .NET Standard facades | `NETStandard.Library 1.6.1` family (`System.*` 4.3.0 shims) | 🔒 net48 shim |
 
 **Rules:**
 - **Do NOT copy these DLLs into `sources/bin` blindly.** Several are C1 packages that must be
   installed via C1's package system (they register types/functions/UI).
-- Version pinning source of truth: `E:\_CODE_\WebDev\SystemC1\Website\packages.config`.
+- Version pinning source of truth: `c:\LocaThor\Website\packages.config`.
 - To make one mandatory later: copy its DLL(s) to `sources/bin` + add to `binDependencies` +
   add any binding redirect (see §17) + verify (`aspnet_compiler` + C1 log).
 
