@@ -638,3 +638,57 @@ Remove the `DynamicSqlDataProvider` entry from `Composite.config`:
 entirely. For hybrid mode (provider registered but no interfaces), the step creates empty
 `DynamicSqlDataProvider.config` but the provider registration in `Composite.config` is
 what causes the startup crash when SQL is down.
+
+---
+
+## 22. Hangfire Support in the Pipeline (2026-08-09)
+
+The pipeline now ships working **Hangfire** background jobs + `/hangfire` dashboard on every
+deploy. Verified end-to-end (`R:\deploy_hf_verify`: homepage 200, `/hangfire` 200, stable, no recycle).
+
+### What was added
+- **DLLs → `sources/bin` + manifest `binDependencies`** (pinned to reference site `C:\LocaThor\Website`):
+  `Hangfire.Core.dll` 1.8.14, `Hangfire.CompositeC1.dll` 1.6.20, `Owin.dll` 1.0,
+  `Microsoft.Owin.dll` 4.2.3, `Microsoft.Owin.Host.SystemWeb.dll` 4.2.3, `Microsoft.Owin.Hosting.dll` 4.2.3.
+- **`sources/HangfireStartup.cs`** (manifest `appCode.items` → `~/App_Code/HangfireStartup.cs`) contains **TWO** classes:
+  - `public class Startup` — OWIN startup; `app.UseHangfireDashboard("/hangfire", options)` with
+    `LocalRequestsOnlyAuthorizationFilter` (localhost only). Referenced by `owin:AppStartup=Startup`.
+  - `[ApplicationStartup] public static class HangfireStartup` — `UseCompositeC1Storage()`,
+    `SetCurrentLogProvider(ColouredConsoleLogProvider)`, `new BackgroundJobServer()`.
+- **Storage auto-creates the C1 types.** `CompositeC1Storage` ctor calls
+  `DynamicTypeManager.EnsureCreateStore` for `Hangfire.CompositeC1.Types.*` — NO DataMetaData XML /
+  extra setup needed. 10 stores appear in `DynamicXmlDataProvider.config` after first run.
+- **`ConfigureWebConfigStep`** adds OWIN binding redirects (`Owin`→1.0.0.0, `Microsoft.Owin*`→4.2.3.0)
+  and the appSetting **`owin:AppStartup=Startup`**.
+
+### CRITICAL GOTCHAS (do not regress)
+1. **OWIN startup-discovery crash → infinite app recycle (~17s).** Deploying
+   `Microsoft.Owin.Host.SystemWeb` registers `OwinHttpModule` via `PreApplicationStartMethod`.
+   Without a resolvable Startup class, `OwinHttpModule.InitializeBlueprint` throws
+   `EntryPointNotFoundException` on every `HttpApplication.Init` → the app silently recycles forever
+   (homepage never responds). The reference site avoided it by shipping `ForOwinStartup.dll`.
+   **Fix:** ship a global `Startup` class AND set `owin:AppStartup=Startup` in `<appSettings>`.
+   Do NOT use `owin:AutomaticAppStartup=false` — it stops the crash but ALSO kills the OWIN
+   pipeline, so `MapOwinPath`/dashboard return 404.
+2. **Hangfire LibLog + EnterpriseLibrary Logging.** Hangfire's LibLog auto-detects C1's
+   `Microsoft.Practices.EnterpriseLibrary.Logging.dll` and tries to use it →
+   `ConfigurationErrorsException: The configuration section for Logging cannot be found` thrown from
+   `BackgroundJobServer..ctor()`. **Fix:** `Hangfire.Logging.LogProvider.SetCurrentLogProvider(
+   new Hangfire.Logging.LogProviders.ColouredConsoleLogProvider())` BEFORE creating the server.
+   Note the British spelling **`Coloured`** (namespace `Hangfire.Logging.LogProviders`, NOT
+   `Hangfire.Logging`).
+3. **SQL provider unreachable** (`izsmmmo-dc`): now avoided because `sqlDataProvider.enabled` is
+   `false` in the manifest (see §21).
+4. `DashboardOptions.Authorization` is `IEnumerable<IDashboardAuthorizationFilter>` in Hangfire 1.8
+   (not the older `IAuthorizationFilter`).
+
+### Verification workflow
+- Boot output headlessly with IIS Express (`/path:R:\deploy... /port:2681`), then:
+  - `http://localhost:2681/` → 200
+  - `http://localhost:2681/hangfire` → 200 (Hangfire dashboard HTML)
+  - C1 log contains `Hangfire sunucusu başlatıldı (CompositeC1Storage, /hangfire dashboard).`
+- Windows Application event log (`ASP.NET 4.0.30319.0`, event 1309, EntryPointNotFoundException) is
+  the definitive way to see the OWIN recycle cause.
+- **RamDisk lock gotcha:** after killing IIS Express, `R:\deploy...\App_Data\Composite\LogFiles` may
+  be stuck "access denied" (a lingering handle — no visible process). Re-deploying to the same folder
+  then fails; use a new folder name or reboot to clear.

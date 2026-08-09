@@ -1,6 +1,6 @@
 {
     "sqlDataProvider": {
-        "enabled": true,
+        "enabled": false,
         "connectionString": "Data Source=izsmmmo-dc;Initial Catalog=C1SqlDataStore;User ID=SA;Password=iz89-sm35;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False;MultipleActiveResultSets=True",
         "sqlTypes": [
             {
@@ -18,7 +18,13 @@
         "System.Runtime.CompilerServices.Unsafe.dll",
         "System.Numerics.Vectors.dll",
         "System.Threading.Tasks.Extensions.dll",
-        "System.ValueTuple.dll"
+        "System.ValueTuple.dll",
+        "Hangfire.Core.dll",
+        "Hangfire.CompositeC1.dll",
+        "Owin.dll",
+        "Microsoft.Owin.dll",
+        "Microsoft.Owin.Host.SystemWeb.dll",
+        "Microsoft.Owin.Hosting.dll"
     ],
     "roslynEnabled": true,
     "dataTypes": [
@@ -143,6 +149,10 @@
             {
                 "source": "ApiHandler.cs",
                 "target": "~/App_Code/ApiHandler.cs"
+            },
+            {
+                "source": "HangfireStartup.cs",
+                "target": "~/App_Code/HangfireStartup.cs"
             }
         ]
     },

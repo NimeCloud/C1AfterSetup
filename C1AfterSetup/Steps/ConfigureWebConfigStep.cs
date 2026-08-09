@@ -230,7 +230,11 @@ namespace C1AfterSetup.Steps
                     new { Name = "System.ValueTuple", Token = "cc7b13ffcd2ddd51", New = "4.0.3.0" },
                     new { Name = "System.Buffers", Token = "cc7b13ffcd2ddd51", New = "4.0.5.0" },
                     new { Name = "System.Runtime.CompilerServices.Unsafe", Token = "b03f5f7f11d50a3a", New = "6.0.3.0" },
-                    new { Name = "System.Threading.Tasks.Extensions", Token = "cc7b13ffcd2ddd51", New = "4.2.1.0" }
+                    new { Name = "System.Threading.Tasks.Extensions", Token = "cc7b13ffcd2ddd51", New = "4.2.1.0" },
+                    new { Name = "Owin", Token = "f0ebd12fd5e55cc5", New = "1.0.0.0" },
+                    new { Name = "Microsoft.Owin", Token = "31bf3856ad364e35", New = "4.2.3.0" },
+                    new { Name = "Microsoft.Owin.Host.SystemWeb", Token = "31bf3856ad364e35", New = "4.2.3.0" },
+                    new { Name = "Microsoft.Owin.Hosting", Token = "31bf3856ad364e35", New = "4.2.3.0" }
                 };
 
                 foreach (var r in redirects)
@@ -260,6 +264,51 @@ namespace C1AfterSetup.Steps
             {
                 doc.Save(webConfigPath);
                 context.Log("  Web.config güncellendi (binding redirects).");
+            }
+
+            // 6b) OWIN başlatma sınıfı açıkça belirtilir.
+            //     Microsoft.Owin.Host.SystemWeb, OwinHttpModule'u PreApplicationStartMethod ile kaydeder;
+            //     belirtilen bir Startup sınıfı yoksa app init'te EntryPointNotFoundException fırlatır ve
+            //     uygulama sonsuz recycle döngüsüne girer (referans sitede ForOwinStartup.dll vardı).
+            //     App_Code'a dağıtılan global "Startup" sınıfını owin:AppStartup ile sabitliyoruz.
+            {
+                XmlElement appSettings = GetOrCreate(doc.DocumentElement, "appSettings");
+                bool hasOwinKey = false;
+                foreach (XmlNode n in appSettings.ChildNodes)
+                {
+                    if (n is XmlElement && n.LocalName == "add")
+                    {
+                        XmlElement addEl = (XmlElement)n;
+                        if (addEl.Attributes["key"] != null
+                            && addEl.Attributes["key"].Value == "owin:AppStartup")
+                        {
+                            hasOwinKey = true;
+                            if (addEl.Attributes["value"] == null
+                                || addEl.Attributes["value"].Value != "Startup")
+                            {
+                                addEl.SetAttribute("value", "Startup");
+                                changed = true;
+                                context.Log("  = appSettings owin:AppStartup=Startup (güncellendi)");
+                            }
+                        }
+                    }
+                }
+                if (!hasOwinKey)
+                {
+                    XmlElement addEl = doc.CreateElement("add");
+                    addEl.SetAttribute("key", "owin:AppStartup");
+                    addEl.SetAttribute("value", "Startup");
+                    appSettings.AppendChild(addEl);
+                    context.Log("  + appSettings owin:AppStartup=Startup");
+                    changed = true;
+                }
+            }
+
+            // OWIN anahtarı (ve önceki bölümlerdeki değişiklikler) dahil son durumu diske yaz.
+            if (changed)
+            {
+                doc.Save(webConfigPath);
+                context.Log("  Web.config güncellendi (OWIN appSettings + diğer değişiklikler).");
             }
 
             // 7) Global.asax: API route'larini RegisterRoutes'a ekle

@@ -336,7 +336,7 @@
                     '<div class="modal-header"><h5 class="modal-title">' + userName + ' - Group Memberships</h5>' +
                     '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
                     '<div class="modal-body"><table id="groups-for-user-table" class="table table-bordered" style="width:100%">' +
-                    '<thead><tr><th></th><th>Group Name</th><th>Description</th><th></th></tr></thead><tbody></tbody></table></div>' +
+                    '<thead><tr><th></th><th>Group Name</th><th>Description</th></tr></thead><tbody></tbody></table></div>' +
                     '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>' +
                     '<button type="button" class="btn btn-primary" id="saveUserGroupsBtn">Save</button></div></div></div></div>';
 
@@ -360,19 +360,7 @@
                                 return '<input type="checkbox" class="form-check-input dt-checkbox" value="' + gid + '"' + (isSelected ? ' checked' : '') + '>';
                             }
                         },
-                        { data: 'groupName' }, { data: 'description' },
-                        {
-                            data: null, orderable: false,
-                            render: function (data, type, row) {
-                                var gid = row.id ? row.id.toString() : '';
-                                var isMember = (initialMemberIds.has(gid) && !changes.removed.has(gid)) || changes.added.has(gid);
-                                if (isMember) {
-                                    return '<button class="btn btn-sm btn-outline-danger leave-group-btn" data-gid="' + gid + '">Leave</button>';
-                                } else {
-                                    return '<button class="btn btn-sm btn-outline-success join-group-btn" data-gid="' + gid + '">Join</button>';
-                                }
-                            }
-                        }
+                        { data: 'groupName' }, { data: 'description' }
                     ],
                     drawCallback: function () {
                         var api = this.api();
@@ -386,20 +374,6 @@
                             }
                         });
                     }
-                });
-
-                // Per-row Join/Leave buttons (instant, no Save needed)
-                $('#groups-for-user-table tbody').on('click', '.join-group-btn', function () {
-                    var gid = $(this).data('gid');
-                    changes.added.add(gid);
-                    changes.removed.delete(gid);
-                    table.ajax.reload(null, false);
-                });
-                $('#groups-for-user-table tbody').on('click', '.leave-group-btn', function () {
-                    var gid = $(this).data('gid');
-                    changes.removed.add(gid);
-                    changes.added.delete(gid);
-                    table.ajax.reload(null, false);
                 });
 
                 $('#groups-for-user-table tbody').on('change', '.dt-checkbox', function () {
