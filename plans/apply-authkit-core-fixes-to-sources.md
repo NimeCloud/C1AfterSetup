@@ -1,5 +1,10 @@
 # Apply AuthKit Core Fixes to C1AfterSetup Sources (2026-08-10)
 
+> ✅ **STATUS: COMPLETED (2026-08-10).** All **FIX 1–8** were ported into C1AfterSetup `sources/`
+> and committed (`0db0e15`, pushed to `origin/main`). **Do NOT re-apply.**
+> Only **FIX 9** remains — a per-deploy runtime check (`UserInGroup.xml` dedup after deploy)
+> plus admin/customer browse verification. See AI_CONTEXT §12.
+
 > **Purpose:** The AuthKit implementation was debugged & fixed in the **WebcamRecorder / WebsiteKit**
 > project (`E:\_CODE_\WebcamRecorder\src\WebsiteKit`). This plan tells you **exactly how to port
 > those fixes into C1AfterSetup's `sources/`** so a fresh deploy ships the corrected AuthKit.

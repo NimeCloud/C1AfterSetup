@@ -4,7 +4,7 @@
 > Debugging gotchas, command patterns, constants, and methods are collected here.
 > A new agent should treat this file as the **FIRST file to read**.
 >
-> **Last updated:** 2026-08-10 (AuthKit core fixes verified in WebcamRecorder/WebsiteKit and mapped for porting — admin gates, CheckPagePermission on pages, HasPermission DB-DENY-first, UserInGroup dedup, Access Denied UX; see plans/apply-authkit-core-fixes-to-sources.md)
+> **Last updated:** 2026-08-10 (AuthKit core fixes VERIFIED in WebcamRecorder/WebsiteKit and now PORTED into C1AfterSetup `sources/` — commit `0db0e15`; admin gates, CheckPagePermission on pages, HasPermission DB-DENY-first, UserInGroup dedup, Access Denied UX. Plan [`plans/apply-authkit-core-fixes-to-sources.md`](plans/apply-authkit-core-fixes-to-sources.md) is marked **COMPLETED**; only FIX 9 runtime check remains)
 
 ---
 
@@ -269,7 +269,7 @@ When starting fresh, check these files FIRST:
 - [`plans/deploy-admin-tools-to-new-site.md`](plans/deploy-admin-tools-to-new-site.md) — new-task prompt: step-by-step instructions for deploying hybrid datastore + admin tool pages to a new C1 CMS site
 - [`plans/c1-reference-site-authkit-packages.md`](plans/c1-reference-site-authkit-packages.md) — **reference site** (working AuthKit + DataTables admin) + exact NuGet package inventory + migration plan
 - [`plans/new-task-prompt-port-authkit-admin-pages.md`](plans/new-task-prompt-port-authkit-admin-pages.md) — short new-task prompt: port AuthKit admin pages/APIs + NuGet package management
-- [`plans/apply-authkit-core-fixes-to-sources.md`](plans/apply-authkit-core-fixes-to-sources.md) — **2026-08-10:** fix-by-fix map to port the VERIFIED AuthKit core fixes (WebcamRecorder/WebsiteKit → C1AfterSetup sources): admin gates, CheckPagePermission, HasPermission DB-DENY-first, UserInGroup dedup, Access Denied UX
+- [`plans/apply-authkit-core-fixes-to-sources.md`](plans/apply-authkit-core-fixes-to-sources.md) — **2026-08-10: ✅ COMPLETED** — fix-by-fix map to port the VERIFIED AuthKit core fixes (WebcamRecorder/WebsiteKit → C1AfterSetup sources): admin gates, CheckPagePermission, HasPermission DB-DENY-first, UserInGroup dedup, Access Denied UX. **Applied + committed (`0db0e15`); do NOT re-apply.** Only FIX 9 (runtime UserInGroup dedup check after deploy) remains.
 
 **REFERENCE SITE (IMPORTANT):** `E:\_CODE_\WebDev\SystemC1\Website` — working precursor AuthKit
 with DataTables admin UI + C# API (Razor synthetic API). Authoritative package versions:
@@ -378,7 +378,7 @@ C1 CMS 6.13 uses an older ASP.NET Web Pages Razor parser with strict limitations
 - **(b)** NEVER use bare `&` in HTML text — use "and". `&` is unreliable (write tools silently revert it).
 - **(c)** NEVER use bare boolean attributes in XHTML: `disabled`, `selected`, `checked`, `readonly`, `multiple`, `required` — MUST be `disabled="disabled"`, `selected="selected"`, etc.
 - **(d)** ALL `.cshtml` files MUST be saved as **UTF-8 with BOM**. PowerShell `WriteAllText` default is UTF-8 WITHOUT BOM, which causes Turkish character corruption in C1's Razor parser. Use `new System.Text.UTF8Encoding($true)` (BOM) when saving via PowerShell, or use `write_to_file` tool (BOM-aware). If Turkish characters appear garbled (e.g., `Å` instead of `Ş`), re-save with BOM.
-- **(e)** AuthKit management pages MUST at minimum use **auth-only** checks (`currentUser == null` → redirect to login with `?redirect=<urlencode(currentUrl)>`), so an anonymous visitor goes to login and returns after signing in. **2026-08-10 UPDATE:** a **second layer** (admin gate) is now applied on top — see [`plans/apply-authkit-core-fixes-to-sources.md`](plans/apply-authkit-core-fixes-to-sources.md). The gate uses `HasPermission(currentUser, Auth.Users.View)` which works because `AuthStartupHandler.Initialize()` → `PermissionSyncService` seeds the permission store + System.Administrators group on first admin-page visit. `HasPermission` is DB-aware (DENY first, then ALLOW, then admin membership) so an admin can still be revoked per-permission. Both layers are required: auth-only base + admin gate. ALL redirects MUST include `?redirect=...`.
+- **(e)** AuthKit management pages MUST at minimum use **auth-only** checks (`currentUser == null` → redirect to login with `?redirect=<urlencode(currentUrl)>`), so an anonymous visitor goes to login and returns after signing in. **2026-08-10 UPDATE:** a **second layer** (admin gate) is now applied on top — **this is ALREADY implemented in `sources/` (commit `0db0e15`);** see [`plans/apply-authkit-core-fixes-to-sources.md`](plans/apply-authkit-core-fixes-to-sources.md) (marked COMPLETED). The gate uses `HasPermission(currentUser, Auth.Users.View)` which works because `AuthStartupHandler.Initialize()` → `PermissionSyncService` seeds the permission store + System.Administrators group on first admin-page visit. `HasPermission` is DB-aware (DENY first, then ALLOW, then admin membership) so an admin can still be revoked per-permission. Both layers are required: auth-only base + admin gate. ALL redirects MUST include `?redirect=...`.
 - All rules are NOT optional — they prevent runtime errors in C1 preview mode.
 
 ---
