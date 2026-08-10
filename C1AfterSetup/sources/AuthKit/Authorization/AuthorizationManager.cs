@@ -200,6 +200,7 @@ namespace AuthKit.Authorization
                 {
                     if (groupIdsToRemove != null && groupIdsToRemove.Any())
                     {
+                        // Aynı (userId, groupId) çifti için birden fazla kayıt varsa hepsini sil.
                         var relationsToDelete = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
                             .Where(ug => ug.RefUserId == userId && groupIdsToRemove.Contains(ug.RefGroupId)).ToList();
                         connection.Delete<AuthKit.Data.Authorization.UserInGroup>(relationsToDelete);
@@ -207,16 +208,40 @@ namespace AuthKit.Authorization
 
                     if (groupIdsToAdd != null && groupIdsToAdd.Any())
                     {
-                        var relationsToAdd = groupIdsToAdd.Select(groupId =>
+                        // DUPLICATE KORUMASI: her (userId, groupId) çifti için TEK kayıt olmalı.
+                        // Mevcut üyelikleri bir kere oku; aynı çiftten birden fazla kayıt varsa
+                        // tekilleştir (ilkini true yap, fazlalıkları sil); yoksa yeni kayıt ekle.
+                        var existingMemberships = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
+                            .Where(ug => ug.RefUserId == userId)
+                            .ToList();
+
+                        foreach (var groupId in groupIdsToAdd)
                         {
+                            if (string.IsNullOrEmpty(groupId)) continue;
+
+                            var duplicates = existingMemberships.Where(ug => ug.RefGroupId == groupId).ToList();
+                            if (duplicates.Any())
+                            {
+                                // Tekilleştir: ilk kaydı true yap, fazla/false kayıtları sil.
+                                var keep = duplicates[0];
+                                if (!keep.IsAllowed)
+                                {
+                                    keep.IsAllowed = true;
+                                    connection.Update(keep);
+                                }
+                                if (duplicates.Count > 1)
+                                {
+                                    connection.Delete<AuthKit.Data.Authorization.UserInGroup>(duplicates.Skip(1).ToList());
+                                }
+                                continue;
+                            }
+
                             var newMember = connection.CreateNew<AuthKit.Data.Authorization.UserInGroup>();
                             newMember.RefUserId = userId;
                             newMember.RefGroupId = groupId;
-                            return newMember;
-                        }).ToList();
-
-                        foreach (var relation in relationsToAdd)
-                            connection.Add(relation);
+                            newMember.IsAllowed = true;
+                            connection.Add(newMember);
+                        }
                     }
                 }
                 return (true, null);
@@ -248,15 +273,22 @@ namespace AuthKit.Authorization
             }
             string permissionId = permission.Id;
 
-            if (IsUserInGroup(user.Id, GroupKeys.System.Administrators))
-                return true;
-
+            // Kural önceliği (kullanıcı isteği):
+            // 1) Önce DB'den zorlamalı ENGEL (DENY) kontrol edilir — admin olsa bile geçerli.
+            // 2) Zorlamalı engel yoksa ve DB'den ALLOW verilmişse izin verilir.
+            // 3) DB'de ne engel ne de yetki varsa, System.Administrators üyeliğine bakılır.
+            //    Böylece eskiden admin olan bir kullanıcı, admin üyeliği kaldırılmadan
+            //    tek tek yetkilerden engellenebilir.
             if (HasDeny(permissionId, user.Id, PermissionScope.User)) return false;
             if (HasDeny(permissionId, user.Id, PermissionScope.Group)) return false;
+            if (HasDeny(permissionId, user.Id, PermissionScope.Everyone)) return false;
+
             if (HasAllow(permissionId, user.Id, PermissionScope.User)) return true;
             if (HasAllow(permissionId, user.Id, PermissionScope.Group)) return true;
-            if (HasDeny(permissionId, user.Id, PermissionScope.Everyone)) return false;
             if (HasAllow(permissionId, user.Id, PermissionScope.Everyone)) return true;
+
+            if (IsUserInGroup(user.Id, GroupKeys.System.Administrators))
+                return true;
 
             return false;
         }
@@ -319,19 +351,41 @@ namespace AuthKit.Authorization
 
             using (var connection = new DataConnection())
             {
-                bool isMember = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
-                    .Any(u => u.RefUserId == userId && u.RefGroupId == adminGroupId);
-                if (isMember) return;
+                // DUPLICATE KORUMASI: aynı (userId, adminGroupId) çifti için tek kayıt olmalı.
+                // Birden fazla kayıt varsa tekilleştir: true olanı koru, fazla/false kayıtları sil.
+                var existingRelations = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
+                    .Where(u => u.RefUserId == userId && u.RefGroupId == adminGroupId)
+                    .ToList();
 
+                if (existingRelations.Count > 0)
+                {
+                    // İlk kaydı true yap (mevcut kaydı update et), fazlalıkları sil.
+                    var keep = existingRelations[0];
+                    if (!keep.IsAllowed)
+                    {
+                        keep.IsAllowed = true;
+                        connection.Update(keep);
+                    }
+                    if (existingRelations.Count > 1)
+                    {
+                        var duplicates = existingRelations.Skip(1).ToList();
+                        connection.Delete<AuthKit.Data.Authorization.UserInGroup>(duplicates);
+                    }
+                    return;
+                }
+
+                // Bootstrap: admin grubu tamamen boşken (ilk kullanıcı) veya C1 Administrator iken
+                // ekle — böylece sistem asla adminsiz kalmaz. Ancak grup zaten üyeli doluysa
+                // otomatik ekleme YAPILMAZ; üyelikler el ile yönetilir (kullanıcı çıkardığında geri gelmez).
                 bool groupHasMembers = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
                     .Any(u => u.RefGroupId == adminGroupId);
+
+                if (groupHasMembers) return;
 
                 bool isC1Admin = false;
                 try { isC1Admin = AuthKit.C1.C1Security.IsCurrentUserInAdministratorsGroup(); } catch { }
 
-                // Grant only when the current C1 user is a C1 administrator, or when the admin
-                // group is still empty (first shadow user -> becomes the administrator).
-                if (!isC1Admin && groupHasMembers) return;
+                if (!isC1Admin) return;
 
                 var relation = connection.CreateNew<AuthKit.Data.Authorization.UserInGroup>();
                 relation.RefUserId = userId;

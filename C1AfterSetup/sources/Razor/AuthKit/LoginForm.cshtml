@@ -14,9 +14,22 @@
         redirectUrl = AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/");
     }
     var redirectUrlJs = HttpUtility.JavaScriptStringEncode(redirectUrl);
+
+    // ADMIN GATE: Panel yalnızca yetkili kullanıcılar içindir.
+    // Kural önceliği: önce DB engel/yetki (DENY/ALLOW), yoksa System.Administrators üyeliği.
+    bool isAdmin = false;
+    if (currentUser != null)
+    {
+        try
+        {
+            isAdmin = AuthKit.Authorization.AuthorizationManager.HasPermission(
+                currentUser, AuthKit.Authorization.PermissionKeys.Auth.Users.View);
+        }
+        catch { }
+    }
 }
 
-@if (currentUser != null)
+@if (currentUser != null && isAdmin)
 {
     <div class="text-center">
         <h5 class="mb-1 fs-5">Welcome back, @currentUser.UserName!</h5>
@@ -35,88 +48,112 @@
             //]]>
         </script>
     }
-else
+else if (currentUser != null)
     {
-        <h4 class="mb-1 fw-semibold">Log In</h4>
-        <p class="mb-3 text-muted">Sign in to your account</p>
-
-        <form id="login-form" autocomplete="off">
-            <div class="mb-3">
-                <label for="username" class="form-label">Username / Email</label>
-                <input type="text" class="form-control" id="username" required="required" />
+        <div class="text-center">
+            <div class="mb-2">
+                <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill px-3 py-2">
+                    <i class="ti ti-user me-1"></i> @currentUser.UserName
+                </span>
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" required="required" />
-            </div>
-            <div class="d-flex align-items-center justify-content-between mb-4">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="rememberMe" checked="checked" />
-                    <label class="form-check-label" for="rememberMe">Remember me</label>
+            <h5 class="mb-1 fs-5">Access Denied</h5>
+            <p class="text-muted mb-4">You are signed in, but you do not have permission to access the AuthKit admin
+                panel. Only members of the <strong>System.Administrators</strong> group can use this area.</p>
+                <button type="button" id="logout-then-login" class="btn btn-outline-secondary w-100 py-2">Sign in with a different
+                    account</button>
                 </div>
-                <a class="text-primary small"
-                   href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")">Forgot
-                    Password</a>
-                </div>
-                <button type="submit" class="btn btn-primary w-100 py-2">Log In</button>
-                <div class="d-flex align-items-center justify-content-center mt-3 small">
-                    <span>Don't have an account?</span>
-                    <a class="text-primary fw-medium ms-2"
-                       href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")">Sign
-                        Up</a>
-                    </div>
-                </form>
-
                 <script>
                     //<![CDATA[
-                    $(function () {
-                        $('#login-form').on('submit', function (e) {
-                            e.preventDefault();
-                            var username = $('#username').val();
-                            var password = $('#password').val();
-                            var rememberMe = $('#rememberMe').is(':checked');
-
-                            Swal.fire({
-                                title: 'Signing in...',
-                                text: 'Please wait.',
-                                allowOutsideClick: false,
-                                didOpen: function () { Swal.showLoading(); }
-                            });
-
-                            $.ajax({
-                                type: 'POST',
-                                url: '/Api/Login',
-                                contentType: 'text/plain; charset=utf-8',
-                                data: JSON.stringify({ username: username, password: password, rememberMe: rememberMe }),
-                                dataType: 'json',
-                                success: function (response) {
-                                    if (response.ok) {
-                                        Swal.fire({
-                                            icon: 'success',
-                                            title: 'Success!',
-                                            text: 'Logged in. Redirecting...',
-                                            timer: 1500,
-                                            showConfirmButton: false
-                                        });
-                                        setTimeout(function () { window.location.href = '@redirectUrlJs'; }, 1500);
-                                    } else {
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Login Failed!',
-                                            text: response.error || 'Invalid username or password.'
-                                        });
-                                    }
-                                },
-                                error: function () {
-                                    Swal.fire({
-                                        icon: 'error',
-                                        title: 'Server Error!',
-                                        text: 'Could not connect to the server.'
-                                    });
-                                }
-                            });
-                        });
+                    $('#logout-then-login').on('click', function (e) {
+                        e.preventDefault();
+                        Swal.fire({ title: 'Signing out...', text: 'Please wait.', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
+                        $.ajax({ type: 'POST', url: '/Api/Logout', contentType: 'text/plain; charset=utf-8', data: '{}' }).always(function () { window.location.reload(); });
                     });
                     //]]>
                 </script>
             }
+else
+            {
+                <h4 class="mb-1 fw-semibold">Log In</h4>
+                <p class="mb-3 text-muted">Sign in to your account</p>
+
+                <form id="login-form" autocomplete="off">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username / Email</label>
+                        <input type="text" class="form-control" id="username" required="required" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" required="required" />
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="rememberMe" checked="checked" />
+                            <label class="form-check-label" for="rememberMe">Remember me</label>
+                        </div>
+                        <a class="text-primary small"
+                           href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")">Forgot
+                            Password</a>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2">Log In</button>
+                        <div class="d-flex align-items-center justify-content-center mt-3 small">
+                            <span>Don't have an account?</span>
+                            <a class="text-primary fw-medium ms-2"
+                               href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")">Sign
+                                Up</a>
+                            </div>
+                        </form>
+
+                        <script>
+                            //<![CDATA[
+                            $(function () {
+                                $('#login-form').on('submit', function (e) {
+                                    e.preventDefault();
+                                    var username = $('#username').val();
+                                    var password = $('#password').val();
+                                    var rememberMe = $('#rememberMe').is(':checked');
+
+                                    Swal.fire({
+                                        title: 'Signing in...',
+                                        text: 'Please wait.',
+                                        allowOutsideClick: false,
+                                        didOpen: function () { Swal.showLoading(); }
+                                    });
+
+                                    $.ajax({
+                                        type: 'POST',
+                                        url: '/Api/Login',
+                                        contentType: 'text/plain; charset=utf-8',
+                                        data: JSON.stringify({ username: username, password: password, rememberMe: rememberMe }),
+                                        dataType: 'json',
+                                        success: function (response) {
+                                            if (response.ok) {
+                                                Swal.fire({
+                                                    icon: 'success',
+                                                    title: 'Success!',
+                                                    text: 'Logged in. Redirecting...',
+                                                    timer: 1500,
+                                                    showConfirmButton: false
+                                                });
+                                                setTimeout(function () { window.location.href = '@redirectUrlJs'; }, 1500);
+                                            } else {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'Login Failed!',
+                                                    text: response.error || 'Invalid username or password.'
+                                                });
+                                            }
+                                        },
+                                        error: function () {
+                                            Swal.fire({
+                                                icon: 'error',
+                                                title: 'Server Error!',
+                                                text: 'Could not connect to the server.'
+                                            });
+                                        }
+                                    });
+                                });
+                            });
+                            //]]>
+                        </script>
+                    }

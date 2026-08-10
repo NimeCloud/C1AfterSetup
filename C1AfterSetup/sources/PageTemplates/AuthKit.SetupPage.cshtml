@@ -115,8 +115,25 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
     var typesReady = false;
     var initDone = false;
     var saveOAuthMessage = "";
+    var tablerIconsUrl = "https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css";
+    var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
 
-    // AuthKit init check
+    // HARDCODED ADMIN GATE: Setup/yönetim eylemleri yalnızca yetkili kullanıcılar içindir.
+    // Kural önceliği: önce DB'den zorlamalı engel (DENY) / yetki (ALLOW) kontrol edilir;
+    // ikisi de yoksa System.Administrators üyeliğine bakılır. Böylece eskiden admin olan
+    // biri, admin üyeliği kaldırılmadan tek tek yetkilerden engellenebilir.
+    bool isAdmin = false;
+    if (currentUser != null)
+    {
+        try
+        {
+            isAdmin = AuthKit.Authorization.AuthorizationManager.HasPermission(
+                currentUser, AuthKit.Authorization.PermissionKeys.Auth.Users.View);
+        }
+        catch { }
+    }
+
+    // AuthKit init check (bootstrap herkes için çalışır; yönetim eylemleri ayrıca korunur)
     try
     {
         initDone = AuthKit.Startup.AuthStartupHandler.IsInitialized;
@@ -132,12 +149,12 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
         typesReady = false;
     }
 
-    if (action == "create" && typesReady)
+    if (action == "create" && typesReady && isAdmin)
     {
         result = CreateAuthPages();
     }
 
-    if (action == "saveoauth")
+    if (action == "saveoauth" && isAdmin)
     {
         try
         {
@@ -160,138 +177,233 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
 <head>
     <title>AuthKit Setup</title>
     <link href="~/assets/authkit/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="@tablerIconsUrl" />
+    <style>
+            .authkit-navbar {
+                background-color: #1f2937;
+                color: #fff;
+            }
+
+            .authkit-navbar .navbar-brand {
+                color: #fff;
+                font-weight: 600;
+            }
+
+            .authkit-navbar .nav-link {
+                color: #cbd5e1;
+            }
+
+            .authkit-navbar .nav-link:hover,
+            .authkit-navbar .nav-link.active {
+                color: #fff;
+            }
+    </style>
 </head>
 
-<body class="p-4">
-    <div class="container">
-        <h2>AuthKit Setup Panel</h2>
-
-        @if (!typesReady)
-        {
-            <div class="alert alert-warning">
-                <h5>Data Types Not Loaded Yet</h5>
-                <p>AuthKit DLL and DataMetaData files were copied, but C1 CMS has not yet registered the new data types.</p>
-                <p><strong>What you need to do:</strong></p>
-                <ol>
-                    <li>Go to this address: <a href="/Composite/updated.aspx"
-                                                   target="_blank"><code>/Composite/updated.aspx</code></a></li>
-                        <li>This page will make C1 CMS recompile the types</li>
-                        <li>Then refresh this page (F5)</li>
-                    </ol>
-                </div>
-            }
-    else
-            {
-                if (!string.IsNullOrEmpty(result))
-                {
-                    <div class="alert alert-info">
-                        <pre>@result</pre>
+<body>
+    @if (isAdmin)
+    {
+        <nav class="navbar navbar-expand-lg authkit-navbar mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="~/">
+                    <i class="ti ti-shield-lock me-1"></i>AuthKit
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#authkitNav"
+                        aria-controls="authkitNav" aria-expanded="false" aria-label="Toggle menu">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="authkitNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link"
+                               href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/Users")">
+                                <i class="ti ti-users me-1"></i>Users
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link"
+                               href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c3c03000-0000-0000-0000-c3c0c3c0c3c0"), "~/Groups")">
+                                <i class="ti ti-users-group me-1"></i>Groups
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link"
+                               href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d4d04000-0000-0000-0000-d4d0d4d0d4d0"), "~/Group-Permissions")">
+                                <i class="ti ti-shield-check me-1"></i>Group Permissions
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link"
+                               href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("e5e05000-0000-0000-0000-e5e0e5e0e5e0"), "~/User-Permissions")">
+                                <i class="ti ti-key me-1"></i>User Permissions
+                            </a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav align-items-center">
+                        <li class="nav-item">
+                            <span class="navbar-text text-white-50 me-2"><i class="ti ti-user me-1"></i> @(currentUser !=
+                                                            null ? currentUser.UserName : "")</span>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link"
+                                   href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d0d0a000-0000-0000-0000-d0d0d0d0d0d0"), "~/Logout")">
+                                    <i class="ti ti-logout me-1"></i>Logout
+                                </a>
+                            </li>
+                        </ul>
                     </div>
-                }
-
-                <div class="alert @(initDone ? "alert-success" : "alert-info")">
-                    AuthKit status: <strong>@(initDone ? "Initialized" : "Initializing...")</strong>
-                    if (initDone)
-                    {
-                    <span> - GroupKeys and Permission synchronization completed.</span>
-                    }
                 </div>
+            </nav>
+        }
 
-                <div class="card mb-3">
-                    <div class="card-header">AuthKit Pages</div>
-                    <div class="card-body">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Page</th>
-                                    <th>Link</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>User Management</td>
-                                    <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/Users")"
-                                               class="btn btn-sm btn-outline-primary">Open</a></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Group Management</td>
-                                        <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c3c03000-0000-0000-0000-c3c0c3c0c3c0"), "~/Groups")"
-                                                   class="btn btn-sm btn-outline-primary">Open</a></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Group Permissions</td>
-                                            <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d4d04000-0000-0000-0000-d4d0d4d0d4d0"), "~/Group-Permissions")"
-                                                       class="btn btn-sm btn-outline-primary">Open</a></td>
-                                            </tr>
+        <div class="p-4">
+            <div class="container">
+                <h2>AuthKit Setup Panel</h2>
+
+                @if (!isAdmin)
+                {
+                    <div class="authkit-card p-5 mx-auto text-center" style="max-width: 480px;">
+                        <div class="mb-2">
+                            <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill px-3 py-2">
+                                <i class="ti ti-user me-1"></i> @(currentUser != null ? currentUser.UserName : "")
+                            </span>
+                        </div>
+                        <i class="ti ti-shield-lock text-danger" style="font-size: 3rem;"></i>
+                        <h3 class="mt-3 mb-2">Access Denied</h3>
+                        <p class="text-muted mb-4">You are signed in, but you do not have permission to access the AuthKit
+                            setup panel. Only members of the <strong>System.Administrators</strong> group can use this area.</p>
+                            <a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d0d0a000-0000-0000-0000-d0d0d0d0d0d0"), "~/Logout")"
+                               class="btn btn-outline-secondary w-100 py-2">Sign in with a different account</a>
+                        </div>
+                    }
+            else if (!typesReady)
+                    {
+                        <div class="alert alert-warning">
+                            <h5>Data Types Not Loaded Yet</h5>
+                            <p>AuthKit DLL and DataMetaData files were copied, but C1 CMS has not yet registered the new data types.
+                            </p>
+                            <p><strong>What you need to do:</strong></p>
+                            <ol>
+                                <li>Go to this address: <a href="/Composite/updated.aspx"
+                                                               target="_blank"><code>/Composite/updated.aspx</code></a></li>
+                                    <li>This page will make C1 CMS recompile the types</li>
+                                    <li>Then refresh this page (F5)</li>
+                                </ol>
+                            </div>
+                        }
+    else
+                        {
+                            if (!string.IsNullOrEmpty(result))
+                            {
+                                <div class="alert alert-info">
+                                    <pre>@result</pre>
+                                </div>
+                            }
+
+                            <div class="alert @(initDone ? "alert-success" : "alert-info")">
+                                AuthKit status: <strong>@(initDone ? "Initialized" : "Initializing...")</strong>
+                                @if (initDone)
+                                {
+                                    <span> - GroupKeys and Permission synchronization completed.</span>
+                                }
+                            </div>
+
+                            <div class="card mb-3">
+                                <div class="card-header">AuthKit Pages</div>
+                                <div class="card-body">
+                                    <table class="table table-sm">
+                                        <thead>
                                             <tr>
-                                                <td>User Permissions</td>
-                                                <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("e5e05000-0000-0000-0000-e5e0e5e0e5e0"), "~/User-Permissions")"
+                                                <th>Page</th>
+                                                <th>Link</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>User Management</td>
+                                                <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b2b02000-0000-0000-0000-b2b0b2b0b2b0"), "~/Users")"
                                                            class="btn btn-sm btn-outline-primary">Open</a></td>
                                                 </tr>
                                                 <tr>
-                                                    <td>Login</td>
-                                                    <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/Login")"
+                                                    <td>Group Management</td>
+                                                    <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c3c03000-0000-0000-0000-c3c0c3c0c3c0"), "~/Groups")"
                                                                class="btn btn-sm btn-outline-primary">Open</a></td>
                                                     </tr>
                                                     <tr>
-                                                        <td>Register</td>
-                                                        <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")"
+                                                        <td>Group Permissions</td>
+                                                        <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d4d04000-0000-0000-0000-d4d0d4d0d4d0"), "~/Group-Permissions")"
                                                                    class="btn btn-sm btn-outline-primary">Open</a></td>
                                                         </tr>
                                                         <tr>
-                                                            <td>Forgot Password</td>
-                                                            <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")"
+                                                            <td>User Permissions</td>
+                                                            <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("e5e05000-0000-0000-0000-e5e0e5e0e5e0"), "~/User-Permissions")"
                                                                        class="btn btn-sm btn-outline-primary">Open</a></td>
                                                             </tr>
                                                             <tr>
-                                                                <td>Reset Password</td>
-                                                                <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c9c09000-0000-0000-0000-c9c0c9c0c9c0"), "~/Reset-Password")"
+                                                                <td>Login</td>
+                                                                <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("f6f06000-0000-0000-0000-f6f0f6f0f6f0"), "~/Login")"
                                                                            class="btn btn-sm btn-outline-primary">Open</a></td>
                                                                 </tr>
                                                                 <tr>
-                                                                    <td>Logout</td>
-                                                                    <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d0d0a000-0000-0000-0000-d0d0d0d0d0d0"), "~/Logout")"
+                                                                    <td>Register</td>
+                                                                    <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("a7a07000-0000-0000-0000-a7a0a7a0a7a0"), "~/Register")"
                                                                                class="btn btn-sm btn-outline-primary">Open</a></td>
                                                                     </tr>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
+                                                                    <tr>
+                                                                        <td>Forgot Password</td>
+                                                                        <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("b8b08000-0000-0000-0000-b8b0b8b0b8b0"), "~/Forgot-Password")"
+                                                                                   class="btn btn-sm btn-outline-primary">Open</a></td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td>Reset Password</td>
+                                                                            <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("c9c09000-0000-0000-0000-c9c0c9c0c9c0"), "~/Reset-Password")"
+                                                                                       class="btn btn-sm btn-outline-primary">Open</a></td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td>Logout</td>
+                                                                                <td><a href="@AuthKit.C1.C1UrlHelper.GetUrlFromPageId(new Guid("d0d0a000-0000-0000-0000-d0d0d0d0d0d0"), "~/Logout")"
+                                                                                           class="btn btn-sm btn-outline-primary">Open</a></td>
+                                                                                </tr>
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
 
-                                                    <div class="card mb-3">
-                                                        <div class="card-header">OAuth Configuration (Google / Facebook Login)</div>
-                                                        <div class="card-body">
-                                                            @if (!string.IsNullOrEmpty(saveOAuthMessage))
-                                                            {
-                                                                <div class="alert alert-success">@saveOAuthMessage</div>
-                                                            }
-                                                            <p class="text-muted">Enter and save the client credentials (Client ID / App ID)
-                                                                below to enable login with Google and Facebook.</p>
-                                                                <form method="post" action="?action=saveoauth">
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label">Google Client ID</label>
-                                                                        <input type="text" class="form-control" name="googleClientId"
-                                                                               value="@(AuthKit.Authentication.AuthenticationManager.GoogleClientId)"
-                                                                               placeholder="xxxxxx.apps.googleusercontent.com" />
+                                                                <div class="card mb-3">
+                                                                    <div class="card-header">OAuth Configuration (Google / Facebook Login)</div>
+                                                                    <div class="card-body">
+                                                                        @if (!string.IsNullOrEmpty(saveOAuthMessage))
+                                                                        {
+                                                                            <div class="alert alert-success">@saveOAuthMessage</div>
+                                                                        }
+                                                                        <p class="text-muted">Enter and save the client credentials (Client ID / App ID)
+                                                                            below to enable login with Google and Facebook.</p>
+                                                                            <form method="post" action="?action=saveoauth">
+                                                                                <div class="mb-3">
+                                                                                    <label class="form-label">Google Client ID</label>
+                                                                                    <input type="text" class="form-control" name="googleClientId"
+                                                                                           value="@(AuthKit.Authentication.AuthenticationManager.GoogleClientId)"
+                                                                                           placeholder="xxxxxx.apps.googleusercontent.com" />
+                                                                                </div>
+                                                                                <div class="mb-3">
+                                                                                    <label class="form-label">Facebook App ID</label>
+                                                                                    <input type="text" class="form-control" name="facebookAppId"
+                                                                                           value="@(AuthKit.Authentication.AuthenticationManager.FacebookAppId)"
+                                                                                           placeholder="1234567890123456" />
+                                                                                </div>
+                                                                                <button type="submit" class="btn btn-secondary">Save OAuth Settings</button>
+                                                                            </form>
+                                                                        </div>
                                                                     </div>
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label">Facebook App ID</label>
-                                                                        <input type="text" class="form-control" name="facebookAppId"
-                                                                               value="@(AuthKit.Authentication.AuthenticationManager.FacebookAppId)"
-                                                                               placeholder="1234567890123456" />
-                                                                    </div>
-                                                                    <button type="submit" class="btn btn-secondary">Save OAuth Settings</button>
-                                                                </form>
+
+                                                                    <a href="?action=create" class="btn btn-primary btn-lg"
+                                                                       onclick="return confirm('9 pages will be created. Do you want to continue?');">
+                                                                        Create Pages
+                                                                    </a>
+                                                                    <p class="text-muted mt-2">Existing pages are skipped.</p>
+                                                                }
                                                             </div>
                                                         </div>
+                                                    </body>
 
-                                                        <a href="?action=create" class="btn btn-primary btn-lg"
-                                                           onclick="return confirm('9 pages will be created. Do you want to continue?');">
-                                                            Create Pages
-                                                        </a>
-                                                        <p class="text-muted mt-2">Existing pages are skipped.</p>
-                                                    }
-                                                </div>
-                                            </body>
-
-                                        </html>
+                                                </html>

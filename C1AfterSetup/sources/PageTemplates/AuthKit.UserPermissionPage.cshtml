@@ -27,6 +27,9 @@
                 "?redirect=" + HttpUtility.UrlEncode(urlCurrent));
         }
     }
+
+    // Granular permission: only users with Auth.Permissions.AssignToUser can use this page.
+    AuthKit.Authorization.AuthorizationManager.CheckPagePermission(AuthKit.Authorization.PermissionKeys.Auth.Permissions.AssignToUser);
 }
 
 <style>

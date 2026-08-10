@@ -18,11 +18,17 @@
 @if (currentUser == null)
 {
     // Already logged out — redirect to login immediately
-    Response.Redirect(loginPageUrl);
+    Response.Redirect(loginPageUrl, false);
+    HttpContext.Current.ApplicationInstance.CompleteRequest();
 }
 else
 {
     <div class="text-center">
+        <div class="mb-2">
+            <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill px-3 py-2">
+                👤 @currentUser.UserName
+            </span>
+        </div>
         <h5 class="mb-1 fs-5">You are logged in as @currentUser.UserName</h5>
         <p class="text-muted mb-4">Click the button below to sign out.</p>
         <button type="button" id="logout-btn" class="btn btn-primary w-100 py-2">Log Out</button>
