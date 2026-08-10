@@ -17,6 +17,10 @@
 }
 
 @{
+    // C1 output-cache (C1Page, duration=60) keyed by URL, NOT by authToken cookie —
+    // disables caching so an anonymous cached panel copy is never shown to a non-admin.
+    HttpContext.Current.Response.Cache.SetCacheability(HttpCacheability.NoCache);
+    HttpContext.Current.Response.Cache.SetNoStore();
     // Seed groups/permissions on first admin page visit (idempotent)
     try { AuthKit.Startup.AuthStartupHandler.Initialize(); } catch { }
     var tablerIconsUrl = "https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css";
@@ -173,7 +177,7 @@ AuthKit.Authorization.PermissionKeys.Auth.Users.View);
                     <ul class="navbar-nav align-items-center">
                         <li class="nav-item">
                             <span class="navbar-text text-white-50 me-2"><i class="ti ti-user me-1"></i> @(currentUser !=
-                                                            null ? currentUser.UserName : "")</span>
+                                                                                            null ? currentUser.UserName : "")</span>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link"

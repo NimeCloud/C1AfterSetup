@@ -4,7 +4,7 @@
 > Debugging gotchas, command patterns, constants, and methods are collected here.
 > A new agent should treat this file as the **FIRST file to read**.
 >
-> **Last updated:** 2026-08-10 (AuthKit core fixes VERIFIED in WebcamRecorder/WebsiteKit and now PORTED into C1AfterSetup `sources/` — commit `0db0e15`; admin gates, CheckPagePermission on pages, HasPermission DB-DENY-first, UserInGroup dedup, Access Denied UX. Plan [`plans/apply-authkit-core-fixes-to-sources.md`](plans/apply-authkit-core-fixes-to-sources.md) is marked **COMPLETED**; only FIX 9 runtime check remains)
+> **Last updated:** 2026-08-10 (AuthKit core fixes VERIFIED in WebcamRecorder/WebsiteKit and PORTED into C1AfterSetup `sources/` — commit `0db0e15`; admin gates, CheckPagePermission on pages, HasPermission DB-DENY-first, UserInGroup dedup, Access Denied UX; **C1 output-cache FIX 10 now PORTED**: `SetCacheability(NoCache)` + `SetNoStore()` added to AuthKit.AuthLayout/PanelLayout/SetupPage templates). Plan [`plans/apply-authkit-core-fixes-to-sources.md`](plans/apply-authkit-core-fixes-to-sources.md) is marked **COMPLETED**; only FIX 9 runtime check remains)
 
 ---
 

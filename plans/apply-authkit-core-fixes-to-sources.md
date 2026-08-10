@@ -187,6 +187,42 @@ in the **output** site (Fixes 2+3 prevent future duplicates). Do not ship user-s
 
 ---
 
+### FIX 10 — Disable C1 output cache on AuthKit page templates (PORTED ✅ 2026-08-10)
+
+**Verified in:** `WebcamRecorder/src/WebsiteKit/App_Data/PageTemplates/`
+- `AuthKit.AuthLayout.cshtml` — Login/Register/Forgot/Reset/Logout
+- `AuthKit.PanelLayout.cshtml` — Users/Groups/Permissions panel
+- `AuthKit.SetupPage.cshtml` — AuthKit home/setup page
+
+**Problem fixed:** C1's `C1Page` output cache (`Web.config`, `duration="60"`) caches the login page
+**keyed by URL + query string, not by the `authToken` cookie**. After a non-admin logs in, the redirect
+chain lands back on `/AuthKit/Login` within the 60 s window and C1 serves the **cached anonymous
+"Log In" form** → user stays on the same page and `Access Denied` never appears (the Razor Access
+Denied logic is correct but never renders). Same risk on panel pages (cached anonymous copy shown to a
+non-admin leaks admin UI).
+
+**Fix:** add to the top of each template's `@{ }` block:
+```csharp
+HttpContext.Current.Response.Cache.SetCacheability(HttpCacheability.NoCache);
+HttpContext.Current.Response.Cache.SetNoStore();
+```
+
+**Apply to:** `C1AfterSetup/C1AfterSetup/sources/PageTemplates/AuthKit.{AuthLayout,PanelLayout,SetupPage}.cshtml`
+→ insert the two lines after the opening `@{`. Keep files **UTF-8 with BOM** (AI_CONTEXT §15-d);
+`HttpCacheability` needs `@using System.Web` (already present).
+
+**Verify:** `/AuthKit/Login` (anon + logged-in non-admin) response headers =
+`Cache-Control: no-cache, no-store` (NOT `public, max-age=60`); non-admin login redirect chain ends on
+Access Denied; admin panel still renders (200, no-cache).
+
+> ✅ **Status (2026-08-10):** ported into
+> `C1AfterSetup/C1AfterSetup/sources/PageTemplates/AuthKit.{AuthLayout,PanelLayout,SetupPage}.cshtml`
+> (two `Response.Cache` lines added to each `@{ }` block; `@using System.Web` added to SetupPage; all
+> files kept **UTF-8 with BOM**). The PENDING block + header note in `AI_CONTEXT.md` were deleted.
+> Remaining: runtime verification of `Cache-Control: no-cache, no-store` on a deployed site.
+
+---
+
 ## Sequence & verification
 
 1. Port Fixes 1–3 (C#) → `dotnet build C1AfterSetup/C1AfterSetup.csproj -c Release`.

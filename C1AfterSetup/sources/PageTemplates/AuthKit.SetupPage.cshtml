@@ -3,6 +3,7 @@
 @using Composite.Data.Types
 @using System
 @using System.Linq
+@using System.Web
 
 @functions {
     public override void Configure()
@@ -110,6 +111,10 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
 }
 
 @{
+    // C1 output-cache (C1Page, duration=60) keyed by URL, NOT by authToken cookie —
+    // disables caching so setup/auth flows render fresh every request.
+    HttpContext.Current.Response.Cache.SetCacheability(HttpCacheability.NoCache);
+    HttpContext.Current.Response.Cache.SetNoStore();
     var action = Request["action"];
     var result = "";
     var typesReady = false;
@@ -242,7 +247,7 @@ AuthKit.Authentication.AuthenticationManager.ResetPasswordPageId.ToString());
                     <ul class="navbar-nav align-items-center">
                         <li class="nav-item">
                             <span class="navbar-text text-white-50 me-2"><i class="ti ti-user me-1"></i> @(currentUser !=
-                                                            null ? currentUser.UserName : "")</span>
+                                                                                                                            null ? currentUser.UserName : "")</span>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link"

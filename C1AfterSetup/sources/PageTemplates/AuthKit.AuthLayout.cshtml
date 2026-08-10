@@ -17,6 +17,10 @@
 }
 
 @{
+    // C1 output-cache (C1Page, duration=60) keyed by URL, NOT by authToken cookie —
+    // disables caching so non-admin redirect chains / Access Denied render correctly.
+    HttpContext.Current.Response.Cache.SetCacheability(HttpCacheability.NoCache);
+    HttpContext.Current.Response.Cache.SetNoStore();
     var tablerIconsUrl = "https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css";
     // Suresi dolmus kimlik dogrulama token'larini temizle
     try { AuthKit.Authentication.AuthenticationManager.CleanupExpiredAuthTokens(); } catch { }
