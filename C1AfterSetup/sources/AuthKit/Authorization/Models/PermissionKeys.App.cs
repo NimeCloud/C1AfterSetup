@@ -9,25 +9,57 @@
     public static partial class PermissionKeys
     {
         /// <summary>
-        /// Uygulama spesifik yetkiler. Ihtiyaca gore ekleyin.
+        /// Uygulama spesifik yetkiler.
+        /// FIX 11 (unified role-based dashboard): kayitli musteri kullanicilari "Customers"
+        /// grubu uzerinden bu anahtarlarin alt kumesini alir; Purchases/Payments.Manage
+        /// admin bolumunu tanimlar (AuthApi.GetStatus isAdmin hesabinda kullanilir).
         /// </summary>
         public static class App
         {
-            // Ornek yetkiler:
-            // [PermissionInfo("Dashboard goruntuleme yetkisi.")]
-            // public const string ViewDashboard = "App.ViewDashboard";
+            /// <summary>
+            /// React dashboard ana sayfasi (musteri).
+            /// </summary>
+            [PermissionInfo("Dashboard goruntuleme yetkisi.")]
+            public const string ViewDashboard = "App.ViewDashboard";
 
-            // [PermissionInfo("Kayitlari listeleme ve goruntuleme yetkisi.")]
-            // public const string ViewRecords = "App.ViewRecords";
+            public static class Licenses
+            {
+                /// <summary>
+                /// Lisanslari listeleme/goruntuleme yetkisi.
+                /// </summary>
+                [PermissionInfo("Lisanslari listeleme/goruntuleme yetkisi.")]
+                public const string View = "App.Licenses.View";
+            }
 
-            // [PermissionInfo("Kayit ekleme yetkisi.")]
-            // public const string AddRecords = "App.AddRecords";
+            public static class Purchases
+            {
+                /// <summary>
+                /// Satin alma kaydi olusturma yetkisi (musteri).
+                /// </summary>
+                [PermissionInfo("Satin alma kaydi olusturma yetkisi.")]
+                public const string Create = "App.Purchases.Create";
 
-            // [PermissionInfo("Kayit duzenleme yetkisi.")]
-            // public const string EditRecords = "App.EditRecords";
+                /// <summary>
+                /// Satin alma kayitlarini listeleme/goruntuleme yetkisi (musteri).
+                /// </summary>
+                [PermissionInfo("Satin alma kayitlarini listeleme/goruntuleme yetkisi.")]
+                public const string View = "App.Purchases.View";
 
-            // [PermissionInfo("Kayit silme yetkisi.")]
-            // public const string DeleteRecords = "App.DeleteRecords";
+                /// <summary>
+                /// Satin alma yonetimi (admin bolumu).
+                /// </summary>
+                [PermissionInfo("Satin alma yonetimi (admin).")]
+                public const string Manage = "App.Purchases.Manage";
+            }
+
+            public static class Payments
+            {
+                /// <summary>
+                /// Odeme yonetimi (admin bolumu).
+                /// </summary>
+                [PermissionInfo("Odeme yonetimi (admin).")]
+                public const string Manage = "App.Payments.Manage";
+            }
         }
     }
 }

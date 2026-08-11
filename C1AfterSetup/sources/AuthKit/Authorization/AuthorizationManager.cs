@@ -159,8 +159,10 @@ namespace AuthKit.Authorization
 
         #region Grup Üyelik Delta Güncelleme
 
-        public static (bool IsSuccess, string ErrorMessage) UpdateGroupMembersDelta(string groupId, List<string> userIdsToAdd, List<string> userIdsToRemove)
+        public static (bool IsSuccess, string ErrorMessage, int RemovedCount, int AddedCount) UpdateGroupMembersDelta(string groupId, List<string> userIdsToAdd, List<string> userIdsToRemove)
         {
+            int removedCount = 0;
+            int addedCount = 0;
             try
             {
                 using (var connection = new DataConnection())
@@ -169,26 +171,36 @@ namespace AuthKit.Authorization
                     {
                         var relationsToDelete = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
                             .Where(ug => ug.RefGroupId == groupId && userIdsToRemove.Contains(ug.RefUserId)).ToList();
+                        removedCount = relationsToDelete.Count;
                         connection.Delete<AuthKit.Data.Authorization.UserInGroup>(relationsToDelete);
                     }
 
                     if (userIdsToAdd != null && userIdsToAdd.Any())
                     {
+                        // Mevcut üyelik setini bir kere oku — aynı üye tekrar eklenmesin (duplicate koruması).
+                        var existingMembers = new HashSet<string>(connection.Get<AuthKit.Data.Authorization.UserInGroup>()
+                            .Where(ug => ug.RefGroupId == groupId)
+                            .Select(ug => ug.RefUserId));
+
                         foreach (var userId in userIdsToAdd)
                         {
+                            if (string.IsNullOrEmpty(userId) || existingMembers.Contains(userId)) continue;
+
                             var newMember = connection.CreateNew<AuthKit.Data.Authorization.UserInGroup>();
                             newMember.RefGroupId = groupId;
                             newMember.RefUserId = userId;
                             connection.Add(newMember);
+                            existingMembers.Add(userId);
+                            addedCount++;
                         }
                     }
                 }
-                return (true, null);
+                return (true, null, removedCount, addedCount);
             }
             catch (Exception ex)
             {
                 Composite.Core.Log.LogError("UpdateGroupMembersDelta", ex.Message);
-                return (false, "An error occurred while updating group members.");
+                return (false, "An error occurred while updating group members.", 0, 0);
             }
         }
 
@@ -305,6 +317,104 @@ namespace AuthKit.Authorization
         }
 
         /// <summary>
+        /// PANEL MODU (AuthKit Razor yonetim sayfalari icin) yetki kontrolu.
+        /// Kural onceligi:
+        ///  1) DB'den zorlamali ENGEL (DENY) her zaman kazanir — C1 kullanicisi dahil.
+        ///  2) Kullanici bir C1 kullanicisiysa (C1 IUser'da ayni username varsa) otomatik erisim
+        ///     verilir — C1'in kendi Administrator grubundan BAGIMSIZ.
+        ///  3) Degilse normal DB tabanli HasPermission'a dusulur (ALLOW / System.Administrators).
+        /// </summary>
+        public static bool HasPanelAccess(AuthKit.Data.Authentication.User user, string permissionName)
+        {
+            if (user == null || string.IsNullOrWhiteSpace(permissionName))
+                return false;
+
+            // 1) DENY her zaman kazanir (kullanicinin kendisi, gruplari veya Everyone).
+            if (HasDenyForPermission(user.Id, permissionName))
+                return false;
+
+            // 2) C1 kullanicisi + DENY yok => otomatik panel erisimi.
+            if (AuthKit.C1.C1Security.IsC1User(user.UserName))
+                return true;
+
+            // 3) Diger kullanicilar icin normal DB tabanli yetki.
+            return HasPermission(user, permissionName);
+        }
+
+        /// <summary>
+        /// Verilen yetkinin herhangi bir scope'ta DENY (IsAllowed=false) kaydi olup olmadigini
+        /// kontrol eder. Panel modu icin C1 otomatik-erisimini devre disi birakan tek engeldir.
+        /// </summary>
+        private static bool HasDenyForPermission(string userId, string permissionName)
+        {
+            var permission = DataFacade.GetData<AuthKit.Data.Authorization.Permission>()
+                                       .FirstOrDefault(p => p.Name == permissionName);
+            if (permission == null) return false;
+            string permissionId = permission.Id;
+
+            // Kullanicinin kendisine verilmis DENY
+            if (DataFacade.GetData<AuthKit.Data.Authorization.PermissionInUser>()
+                .Any(p => p.RefPermissionId == permissionId && p.RefUserId == userId && !p.IsAllowed))
+                return true;
+
+            // Kullanicinin gruplarina verilmis DENY
+            var groupIds = DataFacade.GetData<AuthKit.Data.Authorization.UserInGroup>()
+                            .Where(u => u.RefUserId == userId)
+                            .Select(u => u.RefGroupId);
+            if (DataFacade.GetData<AuthKit.Data.Authorization.PermissionInGroup>()
+                .Any(p => groupIds.Contains(p.RefGroupId) && p.RefPermissionId == permissionId && !p.IsAllowed))
+                return true;
+
+            // Everyone grubuna verilmis DENY
+            if (DataFacade.GetData<AuthKit.Data.Authorization.PermissionInGroup>()
+                .Any(p => p.RefGroupId == EVERYONE_GROUP_ID && p.RefPermissionId == permissionId && !p.IsAllowed))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Kullaniciyi adi verilen gruba ekler (idempotent — duplicate korumali).
+        /// Grup yoksa olusturulur. Yeni kayitli (register) kullanicilari "Customers" gibi
+        /// temel gruplara otomatik katmak icin kullanilir.
+        /// </summary>
+        public static void JoinGroupByName(string userId, string groupName)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(groupName))
+                return;
+
+            try
+            {
+                using (var connection = new DataConnection())
+                {
+                    var group = connection.Get<AuthKit.Data.Authorization.Group>()
+                        .FirstOrDefault(g => g.GroupName.Equals(groupName, StringComparison.OrdinalIgnoreCase));
+                    if (group == null)
+                    {
+                        var newGroup = connection.CreateNew<AuthKit.Data.Authorization.Group>();
+                        newGroup.GroupName = groupName;
+                        newGroup.Description = "Auto-created group.";
+                        group = connection.Add(newGroup);
+                    }
+
+                    bool alreadyMember = connection.Get<AuthKit.Data.Authorization.UserInGroup>()
+                        .Any(u => u.RefUserId == userId && u.RefGroupId == group.Id);
+                    if (alreadyMember) return;
+
+                    var relation = connection.CreateNew<AuthKit.Data.Authorization.UserInGroup>();
+                    relation.RefUserId = userId;
+                    relation.RefGroupId = group.Id;
+                    relation.IsAllowed = true;
+                    connection.Add(relation);
+                }
+            }
+            catch (Exception ex)
+            {
+                Composite.Core.Log.LogError("AuthorizationManager.JoinGroupByName", ex.Message);
+            }
+        }
+
+        /// <summary>
         /// Ensures the "System.Administrators" group exists in the database (idempotent).
         /// </summary>
         public static void EnsureAdministratorsGroup()
@@ -398,6 +508,63 @@ namespace AuthKit.Authorization
         private static string GroupKeyName(string keyValue, string fallback)
         {
             return string.IsNullOrWhiteSpace(keyValue) ? fallback : keyValue;
+        }
+
+        /// <summary>
+        /// Kullanicinin efektif yetki anahtarlarini dondurur (DB tabanli HasPermission ile).
+        /// React dashboard menulerinin yetki bazli fuzyonlanmasi icin /api/auth/status kullanir.
+        /// </summary>
+        public static List<string> GetEffectivePermissions(AuthKit.Data.Authentication.User user)
+        {
+            var result = new List<string>();
+            if (user == null) return result;
+
+            try
+            {
+                var allPermissions = DataFacade.GetData<AuthKit.Data.Authorization.Permission>().ToList();
+                foreach (var permission in allPermissions)
+                {
+                    if (HasPermission(user, permission.Name))
+                        result.Add(permission.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                Composite.Core.Log.LogError("AuthorizationManager.GetEffectivePermissions", ex.Message);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Kullanicinin uye oldugu gruplarin adlarini dondurur.
+        /// </summary>
+        public static List<string> GetUserGroupNames(AuthKit.Data.Authentication.User user)
+        {
+            var result = new List<string>();
+            if (user == null) return result;
+
+            try
+            {
+                var groupIds = DataFacade.GetData<AuthKit.Data.Authorization.UserInGroup>()
+                    .Where(u => u.RefUserId == user.Id)
+                    .Select(u => u.RefGroupId)
+                    .ToHashSet();
+
+                if (groupIds.Count == 0) return result;
+
+                result = DataFacade.GetData<AuthKit.Data.Authorization.Group>()
+                    .Where(g => groupIds.Contains(g.Id))
+                    .Select(g => g.GroupName)
+                    .OrderBy(n => n)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                Composite.Core.Log.LogError("AuthorizationManager.GetUserGroupNames", ex.Message);
+            }
+
+            return result;
         }
 
         public static IEnumerable<AuthKit.Data.Authorization.Module> GetUserVisibleModules(AuthKit.Data.Authentication.User user)

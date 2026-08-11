@@ -95,6 +95,60 @@ namespace AuthKit.Authorization
             // Grant every permission to the System.Administrators group so its effective
             // permissions are visible in the Group/User permission pages (idempotent).
             GrantAllPermissionsToAdministrators();
+
+            // Registered users get a base "Customers" group with the customer-facing app
+            // permissions (React dashboard). System.Administrators membership is NOT granted here.
+            GrantBasePermissionsToCustomers();
+        }
+
+        private static string CustomersGroupName()
+        {
+            string value = null;
+            try { value = GroupKeys.App.Customers; } catch { }
+            return string.IsNullOrWhiteSpace(value) ? "Customers" : value;
+        }
+
+        private void GrantBasePermissionsToCustomers()
+        {
+            string customersName = CustomersGroupName();
+
+            var customersGroup = DataFacade.GetData<AuthKit.Data.Authorization.Group>()
+                .FirstOrDefault(g => g.GroupName.Equals(customersName, StringComparison.OrdinalIgnoreCase));
+            if (customersGroup == null) return;
+
+            string customersGroupId = customersGroup.Id;
+
+            // Base customer permissions — every registered user's effective capability set.
+            string[] basePermissions =
+            {
+                PermissionKeys.App.ViewDashboard,
+                PermissionKeys.App.Licenses.View,
+                PermissionKeys.App.Purchases.Create,
+                PermissionKeys.App.Purchases.View,
+            };
+
+            var existingGrants = new HashSet<string>(
+                DataFacade.GetData<AuthKit.Data.Authorization.PermissionInGroup>()
+                    .Where(p => p.RefGroupId == customersGroupId)
+                    .Select(p => p.RefPermissionId));
+
+            foreach (var permName in basePermissions)
+            {
+                if (string.IsNullOrWhiteSpace(permName)) continue;
+
+                var permission = DataFacade.GetData<AuthKit.Data.Authorization.Permission>()
+                    .FirstOrDefault(p => p.Name == permName);
+                if (permission == null) continue;
+
+                if (existingGrants.Contains(permission.Id)) continue;
+
+                var grant = DataFacade.BuildNew<AuthKit.Data.Authorization.PermissionInGroup>();
+                grant.RefGroupId = customersGroupId;
+                grant.RefPermissionId = permission.Id;
+                grant.IsAllowed = true;
+                DataFacade.AddNew(grant);
+                existingGrants.Add(permission.Id);
+            }
         }
 
         private static string SystemAdministratorsGroupName()

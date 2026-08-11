@@ -21,7 +21,9 @@ namespace AuthKit.Authorization
         public static void CheckPagePermission(string permissionKey)
         {
             var currentUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser();
-            if (currentUser == null || !HasPermission(currentUser, permissionKey))
+            // PANEL MODU: DB DENY kazanir; C1 kullanicisi + DENY yok = otomatik erisim;
+            // digerleri DB yetkisine (HasPermission) bakar.
+            if (currentUser == null || !HasPanelAccess(currentUser, permissionKey))
             {
                 if (LoginPageId != Guid.Empty)
                     HttpContext.Current.Response.Redirect($"~/page({LoginPageId})");

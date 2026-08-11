@@ -208,6 +208,7 @@ namespace AuthKit.Authentication
             var user = FindUserByUsernameOrEmail(username);
             if (user == null) return false;
             if (user.IsTemplate) return false;
+            if (!user.IsActive) return false; // Hard ban: pasif kullanicilar giris yapamaz.
             if (string.IsNullOrEmpty(user.PasswordHash)) return false;
 
             bool isHashed = user.PasswordHash.StartsWith("$2");
@@ -234,6 +235,9 @@ namespace AuthKit.Authentication
 
             if (user.IsTemplate)
                 return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "Template accounts cannot log in." });
+
+            if (!user.IsActive)
+                return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "This account has been disabled. Please contact an administrator." });
 
             if (string.IsNullOrEmpty(user.PasswordHash))
                 return new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { ok = false, error = "This account has no password set. Please contact an administrator." });
@@ -446,6 +450,23 @@ namespace AuthKit.Authentication
                     newUser.CreatedOn = DateTime.UtcNow;
 
                     var addedUser = connection.Add(newUser);
+
+                    // Yeni kullanicilari otomatik olarak "Customers" grubuna kat
+                    // (React dashboard temel yetkileri icin). Idempotent; admin paneli vermez.
+                    if (!addedUser.IsTemplate)
+                    {
+                        try
+                        {
+                            AuthKit.Authorization.AuthorizationManager.JoinGroupByName(
+                                addedUser.Id, AuthKit.Authorization.GroupKeys.App.Customers);
+                        }
+                        catch (Exception joinEx)
+                        {
+                            Composite.Core.Log.LogError("AuthenticationManager.CreateUser.JoinCustomers",
+                                $"Could not join user '{username}' to Customers group: {joinEx.Message}");
+                        }
+                    }
+
                     return (true, null, addedUser);
                 }
             }

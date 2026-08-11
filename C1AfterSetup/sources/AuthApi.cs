@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 
@@ -45,8 +46,39 @@ public class AuthApi : IHttpHandler
             c1LoggedIn = Composite.C1Console.Security.UserValidationFacade.IsLoggedIn();
         }
         catch { }
-        var ak = ctx.User?.Identity?.IsAuthenticated ?? false;
-        return new { success = true, authenticated = ak || c1LoggedIn, username = ctx.User?.Identity?.Name ?? (c1LoggedIn ? c1Username : null), c1LoggedIn = c1LoggedIn };
+
+        // AuthKit uses its own "authToken" cookie (NOT FormsAuthentication), so read the
+        // AuthKit user from the cookie. React pages look ONLY at DB permissions/groups.
+        AuthKit.Data.Authentication.User authKitUser = null;
+        try { authKitUser = AuthKit.Authentication.AuthenticationManager.GetCurrentUser(); }
+        catch { }
+        bool ak = authKitUser != null;
+
+        var permissions = new List<string>();
+        var groups = new List<string>();
+        bool isAdmin = false;
+        if (ak)
+        {
+            permissions = AuthKit.Authorization.AuthorizationManager.GetEffectivePermissions(authKitUser);
+            groups = AuthKit.Authorization.AuthorizationManager.GetUserGroupNames(authKitUser);
+            isAdmin = permissions.Contains(AuthKit.Authorization.PermissionKeys.App.Purchases.Manage)
+                   || permissions.Contains(AuthKit.Authorization.PermissionKeys.App.Payments.Manage)
+                   || permissions.Contains(AuthKit.Authorization.PermissionKeys.Auth.Users.View)
+                   || permissions.Contains(AuthKit.Authorization.PermissionKeys.Auth.Groups.View)
+                   || AuthKit.Authorization.AuthorizationManager.IsUserInGroup(authKitUser.Id, "System.Administrators");
+        }
+
+        return new
+        {
+            success = true,
+            authenticated = ak || c1LoggedIn,
+            username = ak ? authKitUser.UserName : (c1LoggedIn ? c1Username : null),
+            c1LoggedIn = c1LoggedIn,
+            isAdmin = isAdmin,
+            tier = "free",
+            permissions = permissions,
+            groups = groups
+        };
     }
 
     private object DoLogin(HttpContext ctx)

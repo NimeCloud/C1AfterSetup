@@ -223,6 +223,50 @@ Access Denied; admin panel still renders (200, no-cache).
 
 ---
 
+### FIX 11 — Unified role-based dashboard: Customers group, HasPanelAccess, IsActive ban, permissions API (PORTED ✅ 2026-08-10)
+
+**Verified in:** `WebcamRecorder/src/WebsiteKit` (live HTTP on localhost:2681).
+
+**Problem fixed / model:** AuthKit Razor panel and React dashboard are isolated but share the same
+`authToken` cookie. New model:
+- **Panel (Razor) access = `HasPanelAccess(user, perm)`**: DB DENY always wins → **C1 user + no DENY =
+  auto access** (independent of C1 Administrator group) → else DB `HasPermission`.
+- **React dashboard = DB permissions only** (no C1 auto-grant). Menus fuse by permission
+  (`App.ViewDashboard`, `App.Licenses.View`, `App.Purchases.*` = customer; `App.Purchases.Manage` /
+  `App.Payments.Manage` = admin section).
+- **Register → auto-join `Customers` group** (`GroupKeys.App.Customers`) → base customer permissions.
+- **Ban:** soft = remove from Customers (+ revoke licenses); hard = `IsActive=false` → login blocked
+  (now checked in `Login()` + `ValidateCredentialsOnly`).
+- **Access Denied cards** now show a **"Go to Dashboard"** button → `/landing/#/dashboard`.
+
+**Ports applied to C1AfterSetup sources (2026-08-10):**
+- `sources/AuthKit/Authorization/Models/GroupKeys.cs` — `App.Customers` key.
+- `sources/AuthKit/Authorization/Models/PermissionKeys.App.cs` — `App.ViewDashboard`,
+  `App.Licenses.View`, `App.Purchases.{Create,View,Manage}`, `App.Payments.Manage`.
+  ⚠️ These keys were **initially missing** (compile error CS0117 on first verify) — added 2026-08-11
+  so `AuthApi.GetStatus` + `GrantBasePermissionsToCustomers` compile.
+- `sources/AuthKit/Authorization/PermissionSyncService.cs` — seed `Customers` group +
+  `GrantBasePermissionsToCustomers()` (`App.ViewDashboard`, `App.Licenses.View`,
+  `App.Purchases.Create`, `App.Purchases.View`).
+- `sources/AuthKit/Authorization/AuthorizationManager.cs` — `HasPanelAccess`, `HasDenyForPermission`,
+  `JoinGroupByName`, `GetEffectivePermissions`, `GetUserGroupNames`.
+- `sources/AuthKit/Authorization/PermissionManagement.cs` — `CheckPagePermission` → `HasPanelAccess`.
+- `sources/AuthKit/C1/C1Security.cs` — `IsC1User(username)`.
+- `sources/AuthKit/Authentication/AuthenticationManager.cs` — `IsActive` ban checks; `CreateUser`
+  auto-joins Customers (non-template users).
+- `sources/AuthApi.cs` — `GetStatus` returns `permissions[]`, `groups[]`, DB-based `isAdmin`
+  (authToken-cookie based; no license tier in C1AfterSetup — hardcoded `tier:"free"`).
+- `sources/PageTemplates/AuthKit.{PanelLayout,SetupPage}.cshtml` + `sources/Razor/AuthKit/LoginForm.cshtml`
+  — gates → `HasPanelAccess`; Access Denied cards get **"Go to Dashboard"** button.
+
+**Not ported (WebcamRecorder-only):** React app (`src/WebcamRecorder.Web/...`) and
+`ServerLicenseManager`/license APIs are not part of C1AfterSetup `sources/`.
+
+**Verify (fresh deploy):** C1 user → panel access; registered user → React dashboard with only
+customer perms; remove from Customers → dashboard denied; `IsActive=false` → login blocked.
+
+---
+
 ## Sequence & verification
 
 1. Port Fixes 1–3 (C#) → `dotnet build C1AfterSetup/C1AfterSetup.csproj -c Release`.

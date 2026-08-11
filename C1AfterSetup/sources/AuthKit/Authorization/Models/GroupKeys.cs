@@ -18,12 +18,13 @@
             public static string Managers;
         }
 
-        // Uygulamaya özel gruplar buraya eklenebilir.
-        // Ornek:
-        // public static class App
-        // {
-        //     public static string Members;
-        //     public static string Managers;
-        // }
+        public static class App
+        {
+            /// <summary>
+            /// Kayitli (registered) tum kullanicilarin otomatik uye oldugu grup.
+            /// React dashboard temel yetkilerini verir; admin paneli vermez.
+            /// </summary>
+            public static string Customers;
+        }
     }
 }

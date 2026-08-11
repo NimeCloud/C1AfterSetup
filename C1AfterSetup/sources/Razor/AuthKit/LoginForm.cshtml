@@ -16,13 +16,14 @@
     var redirectUrlJs = HttpUtility.JavaScriptStringEncode(redirectUrl);
 
     // ADMIN GATE: Panel yalnızca yetkili kullanıcılar içindir.
-    // Kural önceliği: önce DB engel/yetki (DENY/ALLOW), yoksa System.Administrators üyeliği.
+    // PANEL MODU: DB DENY her zaman kazanır; C1 kullanıcısı + DENY yok = otomatik erişim;
+    // diğerleri DB yetkisine (HasPermission) bakılır.
     bool isAdmin = false;
     if (currentUser != null)
     {
         try
         {
-            isAdmin = AuthKit.Authorization.AuthorizationManager.HasPermission(
+            isAdmin = AuthKit.Authorization.AuthorizationManager.HasPanelAccess(
                 currentUser, AuthKit.Authorization.PermissionKeys.Auth.Users.View);
         }
         catch { }
