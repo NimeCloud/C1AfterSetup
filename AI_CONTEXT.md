@@ -6,6 +6,14 @@
 >
 > **Last updated:** 2026-08-11 (AuthKit core fixes VERIFIED in WebcamRecorder/WebsiteKit and PORTED into C1AfterSetup `sources/` — commit `0db0e15`; admin gates, CheckPagePermission on pages, HasPermission DB-DENY-first, UserInGroup dedup, Access Denied UX; **C1 output-cache FIX 10 now PORTED**: `SetCacheability(NoCache)` + `SetNoStore()` added to AuthKit.AuthLayout/PanelLayout/SetupPage templates; **Unified role-dashboard FIX 11 PORTED + COMMITTED (`a2ecc48`)**: `GroupKeys.App.Customers` + Customers seed, `HasPanelAccess`/`IsC1User`, `IsActive` ban, permissions API, "Go to Dashboard" on Access Denied, `PermissionKeys.App` keys added (fixed CS0117 on compile verify)). Plan [`plans/apply-authkit-core-fixes-to-sources.md`](plans/apply-authkit-core-fixes-to-sources.md) is marked **COMPLETED**; only FIX 9 runtime check remains)
 
+> ⚠️ **BEKLEYEN PORT (2026-08-18) — WebcamKit AuthorizationManager precedence değişikliği (Yol B):**
+> WebcamKit sitesinde [`AuthorizationManager.cs`](sources/AuthKit/Authorization/AuthorizationManager.cs) artık **gerçek öncelik sistemi** kullanıyor (FIX 11'in DB-DENY-first mantığının ÖTESİNDE — kaynak: `C:\_CODE_\WebcamKit\src\WebcamKit.C1Website\App_Code\AuthKit\Authorization\AuthorizationManager.cs`, WebcamKit AI-Context giriş **#28**):
+> - **Precedence:** User > Group > Everyone; **aynı scope içinde DENY > ALLOW** (eski "DENY her zaman kazanır" DEĞİL); admin fallback koşullu (hiç kayıt yoksa).
+> - **ResolveScopeWeight(userId, permissionId, scope) → PermissionWeight?** (kayıt yoksa null); `PermissionWeight` artık gerçek karar parametresi.
+> - **PermissionSyncService:** `CustomerGatedPermissions = { App.Purchases.Create }` — admin grant'ten hariç; `EnsureCustomerGatedPermissions()` idempotent → Everyone grubuna (`00000001`) DENY seed + varsa admin ALLOW siler.
+> - **Port edilecek dosyalar:** `sources/AuthKit/Authorization/AuthorizationManager.cs` (+ `HasPanelAccess`), `sources/AuthKit/Authorization/PermissionSyncService.cs`. WebcamKit tarafındaki `ChatHub.cs` / `ApiHandler.cs` / `App.jsx` bu projede YOK (WebcamKit'e özgü). Detay: [`plans/unified-role-dashboard.md`](../WebcamKit/plans/unified-role-dashboard.md) "C1AfterSetup (port)" + WebcamKit [`C1Website-AI-Context.md`](../WebcamKit/src/WebcamKit.C1Website/C1Website-AI-Context.md) #28.
+>
+
 ---
 
 ## 1. Template GUIDs (Hardcoded in .cshtml)
